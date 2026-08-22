@@ -14,11 +14,11 @@ L’applicazione comunica esclusivamente con `codex app-server`, installato loca
 
 ## Funzionalità
 
-- Aggiornamenti in tempo reale della quota tramite notifiche `account/rateLimits/updated`.
+- Aggiornamenti in tempo reale della quota tramite notifiche `account/rateLimits/updated`, con una verifica al passaggio del puntatore quando i dati sono obsoleti.
 - Pannello compatto compatibile con DPI, con righe stabili nel formato `Etichetta: valore`.
 - Supporto per tema chiaro e scuro, colore principale e trasparenza di Windows.
 - Icone allineate ai pixel per i livelli di quota e gli stati di errore.
-- Visualizzazione del pannello al passaggio del puntatore e chiusura quando si allontana.
+- Visualizzazione del pannello sul monitor che contiene l’icona al passaggio del puntatore e chiusura quando si allontana.
 - Traduzioni integrate in 12 lingue, con la lingua di sistema selezionata per impostazione predefinita.
 - Menu contestuale con aggiornamento su richiesta, accesso alla cartella dell’eseguibile, gestione dell’avvio con Windows e un comando esplicito di chiusura.
 - Impostazioni portatili di lingua e avvio archiviate accanto all’eseguibile.
@@ -43,7 +43,7 @@ Codex Tray implementa attualmente solo un backend Windows nativo. Gli artefatti 
 Esempio di verifica in PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.1-windows-x86_64.exe -Algorithm SHA256
 ```
 
 Non è necessario un programma di installazione. La versione è composta da un singolo eseguibile portabile; il comando `codex` resta un requisito di runtime esterno.
@@ -52,14 +52,14 @@ Non è necessario un programma di installazione. La versione è composta da un s
 
 ```powershell
 codex login
-.\codex-tray-0.4.0-windows-x86_64.exe
+.\codex-tray-0.4.1-windows-x86_64.exe
 ```
 
 L’applicazione si avvia nascosta e aggiunge la propria icona all’area di notifica di Windows.
 
 ## Utilizzo
 
-- Passa il puntatore sull’icona per mostrare il pannello della quota.
+- Passa il puntatore sull’icona per mostrare il pannello della quota sullo stesso monitor.
 - Allontana il puntatore dall’icona per nascondere il pannello.
 - Fai clic con il pulsante destro per nascondere il pannello e aprire il menu contestuale.
 - Apri **Lingua** e scegli **Lingua di sistema** o una lingua specifica. La modifica viene applicata immediatamente.
@@ -68,7 +68,7 @@ L’applicazione si avvia nascosta e aggiunge la propria icona all’area di not
 - Attiva **Avvia con Windows** per registrare o rimuovere il percorso dell’eseguibile corrente nella chiave `Run` dell’utente.
 - Seleziona **Chiudi** per arrestare Codex Tray e il processo figlio app-server.
 
-Gli aggiornamenti arrivano tramite una connessione persistente a `codex app-server`. Codex Tray legge inizialmente l’account e i limiti, ripete entrambe le letture solo dopo un aggiornamento esplicito, unisce le successive notifiche parziali e si riconnette dopo un arresto imprevisto di app-server.
+Gli aggiornamenti arrivano tramite una connessione persistente a `codex app-server`. Codex Tray legge inizialmente l’account e i limiti, conserva e unisce ricorsivamente le successive notifiche parziali e si riconnette dopo un arresto imprevisto di app-server. Un aggiornamento esplicito ripete entrambe le letture. Se il pannello viene mostrato con un’istantanea vecchia di almeno 30 secondi, Codex Tray la riconcilia una volta tramite `account/rateLimits/read`; non esegue interrogazioni periodiche in background.
 
 ## Configurazione
 

@@ -14,11 +14,11 @@ La aplicación solo se comunica con `codex app-server`, instalado localmente. No
 
 ## Funciones
 
-- Actualizaciones de cuota en tiempo real mediante notificaciones `account/rateLimits/updated`.
+- Actualizaciones de cuota en tiempo real mediante notificaciones `account/rateLimits/updated`, con una comprobación al pasar el puntero si los datos están desactualizados.
 - Panel compacto compatible con DPI y filas estables con el formato `Etiqueta: valor`.
 - Compatibilidad con los temas claro y oscuro, el color de énfasis y la transparencia de Windows.
 - Iconos alineados a píxeles para niveles de cuota y estados de error.
-- El panel aparece al pasar el puntero y se oculta al retirarlo.
+- El panel aparece en el monitor que contiene el icono al pasar el puntero y se oculta al retirarlo.
 - Traducciones integradas a 12 idiomas, con el idioma del sistema seleccionado de forma predeterminada.
 - Menú contextual con actualización bajo demanda, acceso a la carpeta del ejecutable, control del inicio con Windows y una acción explícita para cerrar.
 - Ajustes portátiles de idioma e inicio guardados junto al ejecutable.
@@ -43,7 +43,7 @@ Actualmente, Codex Tray solo implementa un backend nativo para Windows. No se pu
 Ejemplo de verificación en PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.1-windows-x86_64.exe -Algorithm SHA256
 ```
 
 No se requiere instalador. La versión es un único ejecutable portátil; el comando `codex` sigue siendo un requisito externo en tiempo de ejecución.
@@ -52,14 +52,14 @@ No se requiere instalador. La versión es un único ejecutable portátil; el com
 
 ```powershell
 codex login
-.\codex-tray-0.4.0-windows-x86_64.exe
+.\codex-tray-0.4.1-windows-x86_64.exe
 ```
 
 La aplicación se inicia oculta y añade su icono a la bandeja del sistema de Windows.
 
 ## Uso
 
-- Pase el puntero sobre el icono para mostrar el panel de cuota.
+- Pase el puntero sobre el icono para mostrar el panel de cuota en el mismo monitor.
 - Retire el puntero del icono para ocultar el panel.
 - Haga clic con el botón derecho para ocultar el panel y abrir el menú contextual.
 - Abra **Idioma** y elija **Idioma del sistema** o un idioma concreto. El cambio se aplica de inmediato.
@@ -68,7 +68,7 @@ La aplicación se inicia oculta y añade su icono a la bandeja del sistema de Wi
 - Active **Iniciar con Windows** para registrar o quitar la ruta del ejecutable actual en la clave `Run` del usuario.
 - Seleccione **Cerrar** para detener Codex Tray y su proceso secundario app-server.
 
-Las actualizaciones llegan mediante una conexión persistente con `codex app-server`. Codex Tray realiza una lectura inicial de la cuenta y los límites, repite ambas lecturas solo tras una actualización explícita, combina las notificaciones parciales posteriores y vuelve a conectarse si app-server termina de forma inesperada.
+Las actualizaciones llegan mediante una conexión persistente con `codex app-server`. Codex Tray realiza una lectura inicial de la cuenta y los límites, conserva y combina recursivamente las notificaciones parciales posteriores y vuelve a conectarse si app-server termina de forma inesperada. Una actualización explícita repite ambas lecturas. Si el panel se muestra con una instantánea de al menos 30 segundos, Codex Tray la coteja una vez mediante `account/rateLimits/read`; no realiza consultas periódicas en segundo plano.
 
 ## Configuración
 

@@ -5,7 +5,7 @@ This file is the project-level source of truth for AI-assisted development in Co
 ## Product contract
 
 - Codex Tray is a native Windows 11 system-tray application written in Rust.
-- The application starts without showing a normal window. Hovering over the tray icon shows the quota panel; moving the pointer away hides it.
+- The application starts without showing a normal window. Hovering over the tray icon shows the quota panel on the monitor containing that icon; moving the pointer away hides it.
 - Right-clicking the tray icon hides the panel and opens a context menu with the language submenu, on-demand refresh, the executable folder, the Windows startup toggle, and **Close**.
 - The tray icon has no system tooltip.
 - The complete UI is available in the 12 embedded languages exposed by the context menu. **System language** is the default and falls back to English when the current Windows language is unsupported.
@@ -18,9 +18,10 @@ This file is the project-level source of truth for AI-assisted development in Co
 ## Codex integration
 
 - Keep one persistent `codex app-server --stdio` child process.
-- Perform the initial `account/read` and `account/rateLimits/read` requests once per connection, and repeat them only after an explicit user refresh.
+- Perform the initial `account/read` and `account/rateLimits/read` requests once per connection. Repeat both after an explicit user refresh.
+- When the panel is shown and the latest snapshot is at least 30 seconds old, reconcile it with one `account/rateLimits/read` request. This interaction-triggered freshness check is not periodic polling; do not add a background polling timer.
 - Receive subsequent quota changes from `account/rateLimits/updated`; do not reintroduce periodic polling.
-- Merge sparse update notifications without discarding account metadata or unchanged rate-limit fields.
+- Preserve notifications received while another app-server request is in flight. Recursively merge sparse update notifications without discarding account metadata or unchanged nested rate-limit fields.
 - Reconnect after an unexpected app-server exit and terminate the child process when Codex Tray closes.
 - Use the authenticated session managed by Codex CLI. Never request an API key or directly read, copy, log, or modify `~/.codex/auth.json`.
 - Preserve distinct UI states for loading, reconnecting, ready, exhausted quota, authentication required, missing subscription/access, missing `codex` executable, and general app-server failure.
@@ -39,7 +40,7 @@ This file is the project-level source of truth for AI-assisted development in Co
 - Use stable Rust pinned by `rust-toolchain.toml` and locked dependencies from `Cargo.lock`.
 - Verify dependency and toolchain updates against current official documentation before adopting them.
 - Keep source code formatted with `rustfmt` and warning-free under Clippy.
-- Add or update deterministic tests for protocol parsing, state merging, status classification, language selection, portable settings, path quoting, and other behavior that does not require a live account.
+- Add or update deterministic tests for protocol parsing, state merging, monitor geometry, status classification, language selection, portable settings, path quoting, and other behavior that does not require a live account.
 - Preserve CRLF-independent behavior and save every text file with LF line endings. `.gitattributes` enforces the repository policy.
 - Do not add telemetry, network calls outside the local Codex app-server integration, or persistent storage without an explicit product decision.
 - Keep the executable portable: application icons and required resources must remain embedded in the single release EXE. Codex CLI remains an external runtime requirement.

@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     io::{BufRead, BufReader, Write},
     process::{Child, ChildStdin, Command, Stdio},
     sync::mpsc::{Receiver, RecvError, RecvTimeoutError, Sender, TryRecvError, channel},
@@ -41,6 +42,7 @@ pub enum WorkerUpdate {
 #[derive(Debug, Clone, Copy)]
 pub enum WorkerCommand {
     Refresh,
+    ReconcileRateLimits,
     Stop,
 }
 
@@ -79,7 +81,7 @@ pub fn run_worker(update_tx: Sender<WorkerUpdate>, command_rx: Receiver<WorkerCo
 
         match command_rx.recv_timeout(RECONNECT_DELAY) {
             Ok(WorkerCommand::Stop) | Err(RecvTimeoutError::Disconnected) => return,
-            Ok(WorkerCommand::Refresh) => {}
+            Ok(WorkerCommand::Refresh | WorkerCommand::ReconcileRateLimits) => {}
             Err(RecvTimeoutError::Timeout) => {}
         }
     }
@@ -116,18 +118,20 @@ fn subscribe_to_usage(
                 send_snapshot(update_tx, &account, &limits)?;
                 continue;
             }
+            Ok(WorkerCommand::ReconcileRateLimits) => {
+                update_tx
+                    .send(WorkerUpdate::Querying)
+                    .map_err(|_| CodexError::Protocol("канал интерфейса закрыт".into()))?;
+                limits = read_rate_limits(&mut client)?;
+                send_snapshot(update_tx, &account, &limits)?;
+                continue;
+            }
             Err(TryRecvError::Empty) => {}
         }
 
-        match client.messages.recv_timeout(COMMAND_CHECK_INTERVAL) {
+        match client.recv_timeout(COMMAND_CHECK_INTERVAL) {
             Ok(Ok(message)) => {
-                if message.get("method").and_then(Value::as_str)
-                    == Some("account/rateLimits/updated")
-                {
-                    let params = message.get("params").ok_or_else(|| {
-                        CodexError::Protocol("в уведомлении лимитов нет params".into())
-                    })?;
-                    merge_rate_limits_notification(&mut limits, params)?;
+                if apply_rate_limits_notification(&mut limits, &message)? {
                     send_snapshot(update_tx, &account, &limits)?;
                 }
             }
@@ -147,7 +151,9 @@ fn read_account(client: &mut AppServerClient) -> Result<Value, CodexError> {
 }
 
 fn read_rate_limits(client: &mut AppServerClient) -> Result<Value, CodexError> {
-    client.request("account/rateLimits/read", None)
+    let limits = client.request("account/rateLimits/read", None)?;
+    client.discard_pending_rate_limit_notifications();
+    Ok(limits)
 }
 
 fn send_snapshot(
@@ -165,6 +171,7 @@ struct AppServerClient {
     child: Child,
     stdin: ChildStdin,
     messages: Receiver<Result<Value, CodexError>>,
+    pending_messages: VecDeque<Value>,
     next_request_id: i64,
 }
 
@@ -224,6 +231,7 @@ impl AppServerClient {
             child,
             stdin,
             messages,
+            pending_messages: VecDeque::new(),
             next_request_id: 1,
         })
     }
@@ -249,10 +257,11 @@ impl AppServerClient {
         Ok(())
     }
 
-    fn read_response(&self, expected_id: i64) -> Result<Value, CodexError> {
+    fn read_response(&mut self, expected_id: i64) -> Result<Value, CodexError> {
         loop {
             let value = self.messages.recv().map_err(channel_closed)??;
             if value.get("id").and_then(Value::as_i64) != Some(expected_id) {
+                self.pending_messages.push_back(value);
                 continue;
             }
 
@@ -262,10 +271,43 @@ impl AppServerClient {
             return Ok(value);
         }
     }
+
+    fn recv_timeout(
+        &mut self,
+        timeout: Duration,
+    ) -> Result<Result<Value, CodexError>, RecvTimeoutError> {
+        self.pending_messages
+            .pop_front()
+            .map(|message| Ok(Ok(message)))
+            .unwrap_or_else(|| self.messages.recv_timeout(timeout))
+    }
+
+    fn discard_pending_rate_limit_notifications(&mut self) {
+        self.pending_messages
+            .retain(|message| !is_rate_limits_notification(message));
+    }
 }
 
 fn channel_closed(_: RecvError) -> CodexError {
     CodexError::Protocol("канал чтения app-server неожиданно закрылся".into())
+}
+
+fn is_rate_limits_notification(message: &Value) -> bool {
+    message.get("method").and_then(Value::as_str) == Some("account/rateLimits/updated")
+}
+
+fn apply_rate_limits_notification(
+    limits_response: &mut Value,
+    message: &Value,
+) -> Result<bool, CodexError> {
+    if !is_rate_limits_notification(message) {
+        return Ok(false);
+    }
+    let params = message
+        .get("params")
+        .ok_or_else(|| CodexError::Protocol("в уведомлении лимитов нет params".into()))?;
+    merge_rate_limits_notification(limits_response, params)?;
+    Ok(true)
 }
 
 impl Drop for AppServerClient {
@@ -318,10 +360,13 @@ fn merge_rate_limit_bucket(
         .as_object_mut()
         .ok_or_else(|| CodexError::Protocol("снимок лимита не является объектом".into()))?;
 
-    for key in ["primary", "secondary", "rateLimitReachedType"] {
+    for key in ["primary", "secondary"] {
         if let Some(value) = update.get(key) {
-            bucket.insert(key.into(), value.clone());
+            merge_sparse_value(bucket.entry(key).or_insert(Value::Null), value);
         }
+    }
+    if let Some(value) = update.get("rateLimitReachedType") {
+        bucket.insert("rateLimitReachedType".into(), value.clone());
     }
     for key in [
         "limitId",
@@ -336,6 +381,17 @@ fn merge_rate_limit_bucket(
         }
     }
     Ok(())
+}
+
+fn merge_sparse_value(target: &mut Value, update: &Value) {
+    match (target.as_object_mut(), update.as_object()) {
+        (Some(target), Some(update)) => {
+            for (key, value) in update {
+                merge_sparse_value(target.entry(key.clone()).or_insert(Value::Null), value);
+            }
+        }
+        _ => *target = update.clone(),
+    }
 }
 
 fn parse_snapshot(account: &Value, limits: &Value) -> Result<UsageSnapshot, CodexError> {
@@ -456,21 +512,34 @@ mod tests {
             }
         });
         let notification = json!({
-            "rateLimits": {
-                "limitId": "codex",
-                "primary": { "usedPercent": 31, "windowDurationMins": 300 },
-                "credits": null,
-                "planType": null,
-                "rateLimitReachedType": null
+            "method": "account/rateLimits/updated",
+            "params": {
+                "rateLimits": {
+                    "limitId": "codex",
+                    "primary": { "usedPercent": 31 },
+                    "credits": null,
+                    "planType": null,
+                    "rateLimitReachedType": null
+                }
             }
         });
 
-        merge_rate_limits_notification(&mut limits, &notification).expect("merge");
+        assert!(apply_rate_limits_notification(&mut limits, &notification).expect("merge"));
         let snapshot = parse_snapshot(&account, &limits).expect("snapshot");
         assert_eq!(snapshot.used_percent, 31);
+        assert_eq!(snapshot.window_duration_mins, Some(300));
         assert_eq!(snapshot.plan_type.as_deref(), Some("pro"));
         assert_eq!(snapshot.credit_balance.as_deref(), Some("12.5"));
         assert_eq!(snapshot.limit_reached_type, None);
+    }
+
+    #[test]
+    fn ignores_unrelated_server_notifications() {
+        let mut limits = json!({ "result": {} });
+        let notification = json!({ "method": "account/updated", "params": {} });
+
+        assert!(!apply_rate_limits_notification(&mut limits, &notification).expect("ignored"));
+        assert_eq!(limits, json!({ "result": {} }));
     }
 
     #[test]

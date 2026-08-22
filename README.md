@@ -14,11 +14,11 @@ The application communicates only with the locally installed `codex app-server`.
 
 ## Features
 
-- Live quota updates through `account/rateLimits/updated` server notifications.
+- Live quota updates through `account/rateLimits/updated` server notifications, with an on-hover freshness check for stale data.
 - Compact DPI-aware panel with stable `Label: value` rows.
 - Windows light/dark theme, accent color, and transparency support.
 - Pixel-aligned tray icons for quota levels and error states.
-- Hover to show the panel; move away to hide it.
+- Hover to show the panel on the monitor containing the tray icon; move away to hide it.
 - Embedded translations for 12 languages, with the system language selected by default.
 - Context menu with on-demand refresh, executable-folder access, Windows startup control, and an explicit close action.
 - Portable language and startup settings stored next to the executable.
@@ -43,7 +43,7 @@ Codex Tray currently implements only a native Windows backend. Linux, macOS, and
 Example checksum verification in PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.1-windows-x86_64.exe -Algorithm SHA256
 ```
 
 No installer is required. The release is a single portable executable; the `codex` command remains an external runtime requirement.
@@ -52,14 +52,14 @@ No installer is required. The release is a single portable executable; the `code
 
 ```powershell
 codex login
-.\codex-tray-0.4.0-windows-x86_64.exe
+.\codex-tray-0.4.1-windows-x86_64.exe
 ```
 
 The application starts hidden and adds its icon to the Windows system tray.
 
 ## Usage
 
-- Hover over the tray icon to show the quota panel.
+- Hover over the tray icon to show the quota panel on the same monitor.
 - Move the pointer away from the icon to hide the panel.
 - Right-click the icon to hide the panel and open the context menu.
 - Open **Language** and choose **System language** or a specific language. Changes apply immediately.
@@ -68,7 +68,7 @@ The application starts hidden and adds its icon to the Windows system tray.
 - Toggle **Start with Windows** to register or remove the current executable path under the current user's Windows `Run` key.
 - Select **Close** to stop Codex Tray and its app-server child process.
 
-Quota updates arrive over one persistent `codex app-server` connection. Codex Tray performs an initial account and rate-limit read, repeats both reads only after an explicit refresh, merges subsequent sparse update notifications, and reconnects after an unexpected app-server exit.
+Quota updates arrive over one persistent `codex app-server` connection. Codex Tray performs an initial account and rate-limit read, preserves and recursively merges subsequent sparse update notifications, and reconnects after an unexpected app-server exit. An explicit refresh repeats both reads. When the panel is shown and its snapshot is at least 30 seconds old, Codex Tray performs one `account/rateLimits/read` reconciliation; it does not poll periodically in the background.
 
 ## Configuration
 

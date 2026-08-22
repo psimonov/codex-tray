@@ -14,11 +14,11 @@ Codex Tray 无需让 Codex 应用或 CLI 始终位于前台，即可随时查看
 
 ## 功能
 
-- 通过 `account/rateLimits/updated` 服务器通知实时更新额度。
+- 通过 `account/rateLimits/updated` 服务器通知实时更新额度，并在悬停时检查过期数据的新鲜度。
 - 支持 DPI 的紧凑面板，采用稳定的 `标签: 值` 行布局。
 - 支持 Windows 明暗主题、强调色和透明效果。
 - 针对额度等级和错误状态提供像素对齐的托盘图标。
-- 鼠标悬停时显示面板，移开后自动隐藏。
+- 鼠标悬停时在图标所在显示器上显示面板，移开后自动隐藏。
 - 内置 12 种语言的翻译，默认选择系统语言。
 - 右键菜单提供按需刷新、打开可执行文件目录、随 Windows 启动开关和明确的关闭操作。
 - 语言和自启动设置以便携方式保存在可执行文件旁。
@@ -43,7 +43,7 @@ Codex Tray 目前仅实现了原生 Windows 后端。在 Linux、macOS 和 Windo
 在 PowerShell 中验证校验和的示例：
 
 ```powershell
-Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.1-windows-x86_64.exe -Algorithm SHA256
 ```
 
 无需安装程序。Release 仅包含一个便携式可执行文件；`codex` 命令仍是外部运行时依赖。
@@ -52,14 +52,14 @@ Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
 
 ```powershell
 codex login
-.\codex-tray-0.4.0-windows-x86_64.exe
+.\codex-tray-0.4.1-windows-x86_64.exe
 ```
 
 应用会以隐藏状态启动，并在 Windows 系统托盘中添加图标。
 
 ## 使用方法
 
-- 将鼠标悬停在托盘图标上以显示额度面板。
+- 将鼠标悬停在托盘图标上，可在同一显示器上显示额度面板。
 - 将鼠标移开以隐藏面板。
 - 右键单击图标可隐藏面板并打开右键菜单。
 - 打开**语言**子菜单，选择**系统语言**或具体语言。更改会立即生效。
@@ -68,7 +68,7 @@ codex login
 - 切换**随 Windows 启动**，可在当前用户的 `Run` 注册表项中添加或移除当前可执行文件的路径。
 - 选择**关闭**以停止 Codex Tray 及其 app-server 子进程。
 
-额度更新通过与 `codex app-server` 的单个持久连接到达。Codex Tray 会在连接建立时读取一次账户和额度信息，仅在用户明确刷新时重复这两个请求，合并后续不完整的更新通知，并在 app-server 意外退出后重新连接。
+额度更新通过与 `codex app-server` 的单个持久连接到达。Codex Tray 会在连接建立时读取一次账户和额度信息，保留并递归合并后续不完整的更新通知，并在 app-server 意外退出后重新连接。用户明确刷新时会重复这两个请求。如果显示面板时快照已存在至少 30 秒，Codex Tray 会通过 `account/rateLimits/read` 对其进行一次校准；后台不会定期轮询。
 
 ## 配置
 

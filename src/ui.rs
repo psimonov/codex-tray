@@ -23,9 +23,9 @@ use windows::{
                 BeginPaint, CreateFontIndirectW, CreateSolidBrush, DeleteObject, EndPaint,
                 FW_SEMIBOLD, FillRect, GetMonitorInfoW, GetStockObject, GetTextExtentPoint32W,
                 HBRUSH, HFONT, HGDIOBJ, IntersectClipRect, InvalidateRect,
-                MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow, PAINTSTRUCT, RestoreDC,
-                SYSTEM_FONT, SaveDC, SelectObject, SetBkMode, SetPixelV, SetTextColor, TRANSPARENT,
-                TextOutW,
+                MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromRect, MonitorFromWindow,
+                PAINTSTRUCT, RestoreDC, SYSTEM_FONT, SaveDC, SelectObject, SetBkMode, SetPixelV,
+                SetTextColor, TRANSPARENT, TextOutW,
             },
         },
         System::{
@@ -80,6 +80,7 @@ const MENU_EXIT: usize = 1002;
 const MENU_REFRESH: usize = 1003;
 const MENU_OPEN_FOLDER: usize = 1004;
 const HOVER_HIDE_DELAY: Duration = Duration::from_millis(150);
+const HOVER_RECONCILE_AFTER: Duration = Duration::from_secs(30);
 const AUTOSTART_KEY: PCWSTR = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
 const AUTOSTART_VALUE: PCWSTR = w!("Codex Tray");
 const APP_ICON_RESOURCE: u16 = 1;
@@ -1057,7 +1058,7 @@ pub fn run(updates: Receiver<WorkerUpdate>, commands: Sender<WorkerCommand>) -> 
         add_tray_icon(hwnd, tray_icon)?;
         apply_rounded_corners(hwnd);
         apply_system_transparency(hwnd);
-        position_near_tray(hwnd, false);
+        position_near_tray(hwnd, false, None);
         SetTimer(Some(hwnd), TIMER_ID, 100, None);
 
         let mut message = MSG::default();
@@ -1537,23 +1538,45 @@ fn tray_data(hwnd: HWND) -> NOTIFYICONDATAW {
 unsafe fn show_hover_window(hwnd: HWND) {
     unsafe {
         let mut cursor = POINT::default();
-        if GetCursorPos(&mut cursor).is_err()
-            || !tray_icon_rect(hwnd).is_some_and(|rect| point_in_rect(cursor, rect))
-        {
+        let Some(icon_rect) = (GetCursorPos(&mut cursor).is_ok())
+            .then(|| tray_icon_rect(hwnd))
+            .flatten()
+            .filter(|rect| point_in_rect(cursor, *rect))
+        else {
             return;
-        }
-        APP.with(|app| {
+        };
+        let refresh_requested = APP.with(|app| {
             let mut app = app.borrow_mut();
-            let Some(state) = app.as_mut() else { return };
+            let Some(state) = app.as_mut() else {
+                return false;
+            };
             if state.suppress_hover_until_leave {
-                return;
+                return false;
             }
             state.last_tray_hover = Some(Instant::now());
             if !state.visible {
                 state.visible = true;
-                position_near_tray(hwnd, true);
+                position_near_tray(hwnd, true, Some(icon_rect));
+                if !state.querying
+                    && state.last_error.is_none()
+                    && state.snapshot.as_ref().is_some_and(|snapshot| {
+                        snapshot_needs_reconciliation(snapshot, Local::now().timestamp())
+                    })
+                    && state
+                        .commands
+                        .send(WorkerCommand::ReconcileRateLimits)
+                        .is_ok()
+                {
+                    state.querying = true;
+                    return true;
+                }
             }
+            false
         });
+        if refresh_requested {
+            update_tray_visual(hwnd);
+            let _ = InvalidateRect(Some(hwnd), None, false);
+        }
     }
 }
 
@@ -1936,9 +1959,24 @@ unsafe fn show_message_box(hwnd: Option<HWND>, message: &str) {
     }
 }
 
-unsafe fn position_near_tray(hwnd: HWND, show: bool) {
+fn snapshot_needs_reconciliation(snapshot: &UsageSnapshot, now: i64) -> bool {
+    now.saturating_sub(snapshot.updated_at) >= HOVER_RECONCILE_AFTER.as_secs() as i64
+}
+
+fn panel_origin(work: RECT, width: i32, height: i32, margin: i32) -> POINT {
+    POINT {
+        x: (work.right - width - margin).max(work.left),
+        y: (work.bottom - height - margin).max(work.top),
+    }
+}
+
+unsafe fn position_near_tray(hwnd: HWND, show: bool, icon_rect: Option<RECT>) {
     unsafe {
-        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        let icon_rect = icon_rect.or_else(|| tray_icon_rect(hwnd));
+        let monitor = icon_rect
+            .as_ref()
+            .map(|rect| MonitorFromRect(rect, MONITOR_DEFAULTTONEAREST))
+            .unwrap_or_else(|| MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST));
         let mut info = MONITORINFO {
             cbSize: size_of::<MONITORINFO>() as u32,
             ..Default::default()
@@ -1962,11 +2000,12 @@ unsafe fn position_near_tray(hwnd: HWND, show: bool) {
         let height = scale(hwnd, WINDOW_HEIGHT);
         let margin = scale(hwnd, 16);
         let width = scale(hwnd, WINDOW_WIDTH);
+        let origin = panel_origin(work, width, height, margin);
         let _ = SetWindowPos(
             hwnd,
             Some(windows::Win32::UI::WindowsAndMessaging::HWND_TOPMOST),
-            work.right - width - margin,
-            work.bottom - height - margin,
+            origin.x,
+            origin.y,
             width,
             height,
             flags,
@@ -2452,6 +2491,40 @@ mod tests {
         );
         assert_eq!(language_from_locale_name("ko-KR"), Language::Korean);
         assert_eq!(language_from_locale_name("sv-SE"), Language::English);
+    }
+
+    #[test]
+    fn positions_panel_inside_negative_coordinate_monitor() {
+        let origin = panel_origin(
+            RECT {
+                left: -2560,
+                top: 4,
+                right: 0,
+                bottom: 1404,
+            },
+            320,
+            195,
+            16,
+        );
+        assert_eq!(origin, POINT { x: -336, y: 1193 });
+    }
+
+    #[test]
+    fn reconciles_only_stale_snapshots_on_hover() {
+        let snapshot = UsageSnapshot {
+            used_percent: 10,
+            window_duration_mins: Some(300),
+            resets_at: None,
+            plan_type: None,
+            credit_balance: None,
+            has_credits: false,
+            unlimited_credits: false,
+            reset_credits: 0,
+            limit_reached_type: None,
+            updated_at: 1_000,
+        };
+        assert!(!snapshot_needs_reconciliation(&snapshot, 1_029));
+        assert!(snapshot_needs_reconciliation(&snapshot, 1_030));
     }
 
     #[test]

@@ -1,0 +1,7 @@
+/target/
+/dist/
+*.pdb
+*.dmp
+*.log
+.idea/
+.vscode/

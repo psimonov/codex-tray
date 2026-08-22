@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-x86_64:
+    name: Windows x86-64
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Verify tag and manifest version
+        shell: pwsh
+        run: |
+          $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+          $metadata = cargo metadata --format-version 1 --no-deps | ConvertFrom-Json
+          $manifestVersion = $metadata.packages[0].version
+          if ($tagVersion -ne $manifestVersion) {
+            throw "Tag version $tagVersion does not match Cargo.toml version $manifestVersion"
+          }
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run tests
+        run: cargo test --locked
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: Build release
+        run: cargo build --release --locked --target x86_64-pc-windows-msvc
+
+      - name: Package artifacts
+        id: package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $artifact = "codex-tray-$version-windows-x86_64.exe"
+          Copy-Item "target/x86_64-pc-windows-msvc/release/codex-tray.exe" $artifact
+          $hash = (Get-FileHash $artifact -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $artifact" | Set-Content "$artifact.sha256" -Encoding ascii -NoNewline
+          "artifact=$artifact" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT: ${{ steps.package.outputs.artifact }}
+        shell: pwsh
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+            $env:ARTIFACT `
+            "$env:ARTIFACT.sha256" `
+            --repo $env:GITHUB_REPOSITORY `
+            --verify-tag `
+            --title "Codex Tray $($env:GITHUB_REF_NAME -replace '^v', '')" `
+            --generate-notes `
+            --notes "Windows x86-64 release. Breaking changes, when present, are listed in the generated notes."

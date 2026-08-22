@@ -1,0 +1,32 @@
+[package]
+name = "codex-tray"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.98"
+description = "Native Windows 11 tray monitor for Codex usage limits"
+license = "MIT"
+publish = false
+
+[dependencies]
+chrono = { version = "=0.4.45", default-features = false, features = ["clock"] }
+serde_json = "=1.0.151"
+thiserror = "=2.0.20"
+windows = { version = "=0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[build-dependencies]
+embed-resource = "=3.0.11"
+ico = "=0.5.0"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

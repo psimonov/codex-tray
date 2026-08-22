@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 64">
+  <style>.outline{fill:#f4f8fa}.well{fill:#1c2632}.ok{fill:#55d6a7}.mid{fill:#65c7f2}.warn{fill:#f2c94c}.low{fill:#ff9f43}.empty{fill:#ff6077}</style>
+  <defs>
+    <g id="vessel">
+      <rect class="outline" width="64" height="64" rx="7"/>
+      <rect class="well" x="4" y="4" width="56" height="56" rx="5"/>
+    </g>
+    <clipPath id="liquid"><rect x="10" y="10" width="44" height="44" rx="4"/></clipPath>
+  </defs>
+  <g transform="translate(0)"><use href="#vessel"/><path class="empty" d="m20 21 5-5 7 8 7-8 5 5-8 11 8 11-5 5-7-8-7 8-5-5 8-11z"/></g>
+  <g transform="translate(64)"><use href="#vessel"/><rect class="low" x="10" y="52" width="44" height="2" clip-path="url(#liquid)"/></g>
+  <g transform="translate(128)"><use href="#vessel"/><rect class="warn" x="10" y="43" width="44" height="11" clip-path="url(#liquid)"/></g>
+  <g transform="translate(192)"><use href="#vessel"/><rect class="mid" x="10" y="32" width="44" height="22" clip-path="url(#liquid)"/></g>
+  <g transform="translate(256)"><use href="#vessel"/><rect class="ok" x="10" y="21" width="44" height="33" clip-path="url(#liquid)"/></g>
+  <g transform="translate(320)"><use href="#vessel"/><rect class="ok" x="10" y="12" width="44" height="42" clip-path="url(#liquid)"/></g>
+  <g transform="translate(384)"><use href="#vessel"/><rect class="ok" x="10" y="10" width="44" height="44" clip-path="url(#liquid)"/></g>
+</svg>

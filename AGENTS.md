@@ -6,9 +6,11 @@ This file is the project-level source of truth for AI-assisted development in Co
 
 - Codex Tray is a native Windows 11 system-tray application written in Rust.
 - The application starts without showing a normal window. Hovering over the tray icon shows the quota panel; moving the pointer away hides it.
-- Right-clicking the tray icon hides the panel and opens a context menu with on-demand refresh, the executable folder, the Windows startup toggle, and **Close**.
+- Right-clicking the tray icon hides the panel and opens a context menu with the language submenu, on-demand refresh, the executable folder, the Windows startup toggle, and **Close**.
 - The tray icon has no system tooltip.
-- The Windows startup entry is stored under the current user's `Run` key. Always derive its command from the running executable; never hardcode an installation path.
+- The complete UI is available in the 12 embedded languages exposed by the context menu. **System language** is the default and falls back to English when the current Windows language is unsupported.
+- Store the selected language and Windows startup preference in `codex-tray.json` next to the running executable. Create the file automatically on first launch; this portable file is the source of truth for both settings.
+- Synchronize the Windows startup preference to the current user's `Run` key at launch and whenever it changes. Always derive the registration command from the running executable; never hardcode an installation path or treat the registry as settings storage.
 - The displayed percentage is the remaining Codex quota. The bar and tray glyph drain from top to bottom as the quota decreases.
 - Panel rows use a stable `Label: value` layout and must not move or resize during updates.
 - Respect Windows DPI, light/dark mode, accent color, and transparency settings. Preserve warning colors for critically low quota.
@@ -27,7 +29,7 @@ This file is the project-level source of truth for AI-assisted development in Co
 
 - `src/codex.rs` owns app-server transport, protocol parsing, reconnection, and platform-independent usage data.
 - `src/platform.rs` is the platform boundary.
-- `src/ui.rs` owns the Windows tray, hover panel, menu, autostart registration, theming, DPI behavior, and status presentation.
+- `src/ui.rs` owns the Windows tray, hover panel, embedded translations, portable settings, menu, autostart synchronization, theming, DPI behavior, and status presentation.
 - `src/main.rs` wires the worker and platform UI together.
 - `build.rs` generates and embeds application and tray icon resources. Inspect icon changes at 16, 20, 24, and 32 pixels at minimum.
 - Keep platform-independent logic out of the Windows UI module where practical. Do not claim support for an OS or architecture that is not built and tested in CI.
@@ -37,7 +39,7 @@ This file is the project-level source of truth for AI-assisted development in Co
 - Use stable Rust pinned by `rust-toolchain.toml` and locked dependencies from `Cargo.lock`.
 - Verify dependency and toolchain updates against current official documentation before adopting them.
 - Keep source code formatted with `rustfmt` and warning-free under Clippy.
-- Add or update deterministic tests for protocol parsing, state merging, status classification, path quoting, and other behavior that does not require a live account.
+- Add or update deterministic tests for protocol parsing, state merging, status classification, language selection, portable settings, path quoting, and other behavior that does not require a live account.
 - Preserve CRLF-independent behavior and save every text file with LF line endings. `.gitattributes` enforces the repository policy.
 - Do not add telemetry, network calls outside the local Codex app-server integration, or persistent storage without an explicit product decision.
 - Keep the executable portable: application icons and required resources must remain embedded in the single release EXE. Codex CLI remains an external runtime requirement.

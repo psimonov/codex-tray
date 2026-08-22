@@ -19,7 +19,9 @@ L’application communique uniquement avec `codex app-server`, installé localem
 - Prise en charge des thèmes clair et sombre, de la couleur d’accentuation et de la transparence de Windows.
 - Icônes alignées sur les pixels pour les niveaux de quota et les états d’erreur.
 - Affichage du panneau au survol et masquage lorsque le pointeur s’éloigne.
+- Traductions intégrées en 12 langues, avec la langue du système sélectionnée par défaut.
 - Menu contextuel avec actualisation à la demande, accès au dossier de l’exécutable, gestion du démarrage avec Windows et commande explicite de fermeture.
+- Paramètres portables de langue et de démarrage enregistrés à côté de l’exécutable.
 - Aucune infobulle système au-dessus de l’icône.
 - États distincts pour le chargement, la reconnexion, l’authentification, l’abonnement, la CLI absente, le quota épuisé et les erreurs app-server.
 
@@ -36,12 +38,12 @@ Codex Tray n’implémente actuellement qu’un backend Windows natif. Aucun art
 1. Ouvrez la [dernière version GitHub](https://github.com/psimonov/codex-tray/releases/latest).
 2. Téléchargez `codex-tray-<version>-windows-x86_64.exe` et son fichier `.sha256`.
 3. Vérifiez la somme de contrôle SHA-256.
-4. Placez l’exécutable dans un dossier permanent, puis lancez-le.
+4. Placez l’exécutable dans un dossier permanent accessible en écriture, puis lancez-le.
 
 Exemple de vérification dans PowerShell :
 
 ```powershell
-Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 Aucun programme d’installation n’est nécessaire. La version est distribuée sous la forme d’un exécutable portable unique ; la commande `codex` reste une dépendance d’exécution externe.
@@ -50,7 +52,7 @@ Aucun programme d’installation n’est nécessaire. La version est distribuée
 
 ```powershell
 codex login
-.\codex-tray-0.3.0-windows-x86_64.exe
+.\codex-tray-0.4.0-windows-x86_64.exe
 ```
 
 L’application démarre masquée et ajoute son icône à la zone de notification Windows.
@@ -60,6 +62,7 @@ L’application démarre masquée et ajoute son icône à la zone de notificatio
 - Survolez l’icône pour afficher le panneau du quota.
 - Éloignez le pointeur de l’icône pour masquer le panneau.
 - Faites un clic droit pour masquer le panneau et ouvrir le menu contextuel.
+- Ouvrez **Langue** et choisissez **Langue du système** ou une langue particulière. La modification s’applique immédiatement.
 - Sélectionnez **Actualiser maintenant** pour répéter immédiatement `account/read` et `account/rateLimits/read` via la connexion app-server existante.
 - Sélectionnez **Ouvrir le dossier de l’application** pour ouvrir le répertoire qui contient l’exécutable en cours d’utilisation.
 - Activez **Démarrer avec Windows** pour enregistrer ou supprimer le chemin de l’exécutable courant dans la clé utilisateur `Run`.
@@ -69,7 +72,16 @@ Les mises à jour arrivent sur une connexion persistante à `codex app-server`. 
 
 ## Configuration
 
-Codex Tray n’utilise ni fichier de configuration ni variable d’environnement. Le démarrage facultatif avec Windows se règle depuis le menu contextuel et utilise toujours le chemin détecté dynamiquement de l’exécutable en cours d’utilisation.
+Au premier lancement, Codex Tray crée `codex-tray.json` à côté de l’exécutable. Ce fichier conserve la langue sélectionnée et le réglage de démarrage avec Windows :
+
+```json
+{
+  "language": "system",
+  "start_with_windows": false
+}
+```
+
+`language` accepte `system`, `en`, `es`, `fr`, `pt`, `de`, `it`, `ru`, `zh-CN`, `hi`, `ar`, `ja` ou `ko`. Le fichier de configuration est la source de vérité. L’entrée Windows `Run` de l’utilisateur est synchronisée depuis `start_with_windows` et utilise toujours le chemin détecté dynamiquement de l’exécutable en cours d’utilisation. Une entrée de démarrage existante est importée lors de la première création de la configuration.
 
 ## Compilation depuis les sources
 

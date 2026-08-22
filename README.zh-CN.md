@@ -19,7 +19,9 @@ Codex Tray 无需让 Codex 应用或 CLI 始终位于前台，即可随时查看
 - 支持 Windows 明暗主题、强调色和透明效果。
 - 针对额度等级和错误状态提供像素对齐的托盘图标。
 - 鼠标悬停时显示面板，移开后自动隐藏。
+- 内置 12 种语言的翻译，默认选择系统语言。
 - 右键菜单提供按需刷新、打开可执行文件目录、随 Windows 启动开关和明确的关闭操作。
+- 语言和自启动设置以便携方式保存在可执行文件旁。
 - 托盘图标不显示系统工具提示。
 - 分别显示加载、重连、需要认证、订阅不可用、CLI 缺失、额度耗尽和 app-server 错误状态。
 
@@ -36,12 +38,12 @@ Codex Tray 目前仅实现了原生 Windows 后端。在 Linux、macOS 和 Windo
 1. 打开[最新 GitHub Release](https://github.com/psimonov/codex-tray/releases/latest)。
 2. 下载 `codex-tray-<version>-windows-x86_64.exe` 及其 `.sha256` 文件。
 3. 验证 SHA-256 校验和。
-4. 将可执行文件移动到任意固定目录并运行。
+4. 将可执行文件移动到任意可写的固定目录并运行。
 
 在 PowerShell 中验证校验和的示例：
 
 ```powershell
-Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 无需安装程序。Release 仅包含一个便携式可执行文件；`codex` 命令仍是外部运行时依赖。
@@ -50,7 +52,7 @@ Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
 
 ```powershell
 codex login
-.\codex-tray-0.3.0-windows-x86_64.exe
+.\codex-tray-0.4.0-windows-x86_64.exe
 ```
 
 应用会以隐藏状态启动，并在 Windows 系统托盘中添加图标。
@@ -60,6 +62,7 @@ codex login
 - 将鼠标悬停在托盘图标上以显示额度面板。
 - 将鼠标移开以隐藏面板。
 - 右键单击图标可隐藏面板并打开右键菜单。
+- 打开**语言**子菜单，选择**系统语言**或具体语言。更改会立即生效。
 - 选择**立即刷新**，可通过现有 app-server 连接立即重复 `account/read` 和 `account/rateLimits/read`。
 - 选择**打开应用目录**，可打开当前运行的可执行文件所在目录。
 - 切换**随 Windows 启动**，可在当前用户的 `Run` 注册表项中添加或移除当前可执行文件的路径。
@@ -69,7 +72,16 @@ codex login
 
 ## 配置
 
-Codex Tray 不使用配置文件或环境变量。可选的 Windows 自启动功能通过右键菜单控制，并始终使用运行中可执行文件的动态检测路径。
+首次启动时，Codex Tray 会在可执行文件旁创建 `codex-tray.json`。该文件保存所选语言和 Windows 自启动设置：
+
+```json
+{
+  "language": "system",
+  "start_with_windows": false
+}
+```
+
+`language` 可设为 `system`、`en`、`es`、`fr`、`pt`、`de`、`it`、`ru`、`zh-CN`、`hi`、`ar`、`ja` 或 `ko`。配置文件是设置的唯一依据。用户的 Windows `Run` 项会根据 `start_with_windows` 同步，并始终使用运行中可执行文件的动态检测路径。首次创建配置时会导入已有的自启动项。
 
 ## 从源代码构建
 

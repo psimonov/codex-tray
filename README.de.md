@@ -19,7 +19,9 @@ Die Anwendung kommuniziert ausschließlich mit dem lokal installierten `codex ap
 - Unterstützung für helles und dunkles Windows-Design, Akzentfarbe und Transparenz.
 - Pixelgenau ausgerichtete Symbole für Kontingentstufen und Fehlerzustände.
 - Einblenden beim Überfahren des Symbols und Ausblenden, sobald der Zeiger es verlässt.
+- Integrierte Übersetzungen in 12 Sprachen, standardmäßig mit der Systemsprache.
 - Kontextmenü mit Aktualisierung auf Anforderung, Zugriff auf den Ordner der ausführbaren Datei, Steuerung des Windows-Autostarts und einem eindeutigen Befehl zum Beenden.
+- Portable Sprach- und Autostarteinstellungen neben der ausführbaren Datei.
 - Kein System-Tooltip über dem Symbol.
 - Separate Zustände für Laden, erneute Verbindung, Authentifizierung, Abonnement, fehlende CLI, ausgeschöpftes Kontingent und app-server-Fehler.
 
@@ -36,12 +38,12 @@ Codex Tray besitzt derzeit ausschließlich ein natives Windows-Backend. Artefakt
 1. Öffnen Sie das [neueste GitHub Release](https://github.com/psimonov/codex-tray/releases/latest).
 2. Laden Sie `codex-tray-<version>-windows-x86_64.exe` und die zugehörige `.sha256`-Datei herunter.
 3. Prüfen Sie die SHA-256-Prüfsumme.
-4. Verschieben Sie die ausführbare Datei in einen dauerhaften Ordner und starten Sie sie.
+4. Verschieben Sie die ausführbare Datei in einen dauerhaft beschreibbaren Ordner und starten Sie sie.
 
 Beispiel für die Prüfung in PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 Ein Installationsprogramm ist nicht erforderlich. Das Release besteht aus einer einzelnen portablen ausführbaren Datei; der Befehl `codex` bleibt eine externe Laufzeitvoraussetzung.
@@ -50,7 +52,7 @@ Ein Installationsprogramm ist nicht erforderlich. Das Release besteht aus einer 
 
 ```powershell
 codex login
-.\codex-tray-0.3.0-windows-x86_64.exe
+.\codex-tray-0.4.0-windows-x86_64.exe
 ```
 
 Die Anwendung startet ausgeblendet und fügt ihr Symbol dem Windows-Infobereich hinzu.
@@ -60,6 +62,7 @@ Die Anwendung startet ausgeblendet und fügt ihr Symbol dem Windows-Infobereich 
 - Fahren Sie mit dem Zeiger über das Symbol, um das Kontingentfenster anzuzeigen.
 - Bewegen Sie den Zeiger vom Symbol weg, um das Fenster auszublenden.
 - Klicken Sie mit der rechten Maustaste, um das Fenster auszublenden und das Kontextmenü zu öffnen.
+- Öffnen Sie **Sprache** und wählen Sie **Systemsprache** oder eine bestimmte Sprache. Die Änderung wird sofort angewendet.
 - Wählen Sie **Jetzt aktualisieren**, um `account/read` und `account/rateLimits/read` sofort über die bestehende app-server-Verbindung zu wiederholen.
 - Wählen Sie **Anwendungsordner öffnen**, um den Ordner der laufenden ausführbaren Datei zu öffnen.
 - Schalten Sie **Mit Windows starten** um, um den aktuellen Pfad der ausführbaren Datei im benutzerspezifischen `Run`-Schlüssel einzutragen oder zu entfernen.
@@ -69,7 +72,16 @@ Aktualisierungen treffen über eine dauerhafte Verbindung zu `codex app-server` 
 
 ## Konfiguration
 
-Codex Tray verwendet weder eine Konfigurationsdatei noch Umgebungsvariablen. Der optionale Windows-Autostart wird im Kontextmenü gesteuert und verwendet immer den dynamisch ermittelten Pfad der laufenden ausführbaren Datei.
+Beim ersten Start erstellt Codex Tray neben der ausführbaren Datei `codex-tray.json`. Darin werden die ausgewählte Sprache und die Windows-Autostarteinstellung gespeichert:
+
+```json
+{
+  "language": "system",
+  "start_with_windows": false
+}
+```
+
+`language` akzeptiert `system`, `en`, `es`, `fr`, `pt`, `de`, `it`, `ru`, `zh-CN`, `hi`, `ar`, `ja` oder `ko`. Die Konfigurationsdatei ist die maßgebliche Einstellungsquelle. Der Windows-`Run`-Eintrag des Benutzers wird aus `start_with_windows` synchronisiert und verwendet immer den dynamisch ermittelten Pfad der laufenden ausführbaren Datei. Ein vorhandener Autostarteintrag wird bei der ersten Erstellung der Konfiguration übernommen.
 
 ## Aus dem Quellcode erstellen
 

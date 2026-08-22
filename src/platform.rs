@@ -9,4 +9,4 @@
 mod windows;
 
 #[cfg(windows)]
-pub use windows::run;
+pub use windows::{run, startup_error_message};

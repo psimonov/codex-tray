@@ -19,7 +19,7 @@ fn main() {
     thread::spawn(move || codex::run_worker(update_tx, command_rx));
 
     if let Err(error) = platform::run(update_rx, command_tx) {
-        show_error(&format!("Codex Tray не удалось запустить:\n\n{error}"));
+        show_error(&platform::startup_error_message(&error));
     }
 }
 

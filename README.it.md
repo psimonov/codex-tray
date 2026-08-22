@@ -19,7 +19,9 @@ L’applicazione comunica esclusivamente con `codex app-server`, installato loca
 - Supporto per tema chiaro e scuro, colore principale e trasparenza di Windows.
 - Icone allineate ai pixel per i livelli di quota e gli stati di errore.
 - Visualizzazione del pannello al passaggio del puntatore e chiusura quando si allontana.
+- Traduzioni integrate in 12 lingue, con la lingua di sistema selezionata per impostazione predefinita.
 - Menu contestuale con aggiornamento su richiesta, accesso alla cartella dell’eseguibile, gestione dell’avvio con Windows e un comando esplicito di chiusura.
+- Impostazioni portatili di lingua e avvio archiviate accanto all’eseguibile.
 - Nessuna descrizione comando di sistema sopra l’icona.
 - Stati distinti per caricamento, riconnessione, autenticazione, abbonamento, CLI mancante, quota esaurita ed errore di app-server.
 
@@ -36,12 +38,12 @@ Codex Tray implementa attualmente solo un backend Windows nativo. Gli artefatti 
 1. Apri l’[ultima versione su GitHub](https://github.com/psimonov/codex-tray/releases/latest).
 2. Scarica `codex-tray-<version>-windows-x86_64.exe` e il relativo file `.sha256`.
 3. Verifica il checksum SHA-256.
-4. Sposta l’eseguibile in una cartella permanente e avvialo.
+4. Sposta l’eseguibile in una cartella permanente con permessi di scrittura e avvialo.
 
 Esempio di verifica in PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 Non è necessario un programma di installazione. La versione è composta da un singolo eseguibile portabile; il comando `codex` resta un requisito di runtime esterno.
@@ -50,7 +52,7 @@ Non è necessario un programma di installazione. La versione è composta da un s
 
 ```powershell
 codex login
-.\codex-tray-0.3.0-windows-x86_64.exe
+.\codex-tray-0.4.0-windows-x86_64.exe
 ```
 
 L’applicazione si avvia nascosta e aggiunge la propria icona all’area di notifica di Windows.
@@ -60,6 +62,7 @@ L’applicazione si avvia nascosta e aggiunge la propria icona all’area di not
 - Passa il puntatore sull’icona per mostrare il pannello della quota.
 - Allontana il puntatore dall’icona per nascondere il pannello.
 - Fai clic con il pulsante destro per nascondere il pannello e aprire il menu contestuale.
+- Apri **Lingua** e scegli **Lingua di sistema** o una lingua specifica. La modifica viene applicata immediatamente.
 - Seleziona **Aggiorna ora** per ripetere immediatamente `account/read` e `account/rateLimits/read` tramite la connessione app-server esistente.
 - Seleziona **Apri cartella dell’applicazione** per aprire la directory che contiene l’eseguibile in uso.
 - Attiva **Avvia con Windows** per registrare o rimuovere il percorso dell’eseguibile corrente nella chiave `Run` dell’utente.
@@ -69,7 +72,16 @@ Gli aggiornamenti arrivano tramite una connessione persistente a `codex app-serv
 
 ## Configurazione
 
-Codex Tray non usa file di configurazione né variabili d’ambiente. L’avvio facoltativo con Windows si controlla dal menu contestuale e utilizza sempre il percorso rilevato dinamicamente dell’eseguibile in esecuzione.
+Al primo avvio, Codex Tray crea `codex-tray.json` accanto all’eseguibile. Il file memorizza la lingua selezionata e la preferenza di avvio con Windows:
+
+```json
+{
+  "language": "system",
+  "start_with_windows": false
+}
+```
+
+`language` accetta `system`, `en`, `es`, `fr`, `pt`, `de`, `it`, `ru`, `zh-CN`, `hi`, `ar`, `ja` o `ko`. Il file di configurazione è la fonte autorevole delle impostazioni. La voce Windows `Run` dell’utente viene sincronizzata da `start_with_windows` e usa sempre il percorso rilevato dinamicamente dell’eseguibile in esecuzione. Una voce di avvio esistente viene importata alla prima creazione della configurazione.
 
 ## Compilazione dal codice sorgente
 

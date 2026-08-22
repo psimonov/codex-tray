@@ -19,7 +19,9 @@ Codex Tray आपको Codex ऐप या CLI को सामने रखे
 - Windows के लाइट/डार्क थीम, एक्सेंट रंग और पारदर्शिता का समर्थन।
 - कोटा स्तरों और त्रुटि स्थितियों के लिए पिक्सेल-अलाइन ट्रे आइकन।
 - पॉइंटर ले जाने पर पैनल दिखता है और हटाने पर छिप जाता है।
+- 12 भाषाओं के अंतर्निहित अनुवाद, जिनमें सिस्टम भाषा डिफ़ॉल्ट रूप से चुनी जाती है।
 - माँग पर अपडेट, executable folder खोलने, Windows के साथ शुरू करने के नियंत्रण और स्पष्ट बंद करने की क्रिया वाला संदर्भ मेनू।
+- executable के पास संग्रहीत पोर्टेबल भाषा और startup सेटिंग्स।
 - ट्रे आइकन पर कोई सिस्टम टूलटिप नहीं।
 - लोडिंग, दोबारा कनेक्ट होने, प्रमाणीकरण, सदस्यता, CLI न मिलने, कोटा समाप्त होने और app-server त्रुटि के अलग-अलग संकेत।
 
@@ -36,12 +38,12 @@ Codex Tray में अभी केवल नेटिव Windows backend ल�
 1. [नवीनतम GitHub Release](https://github.com/psimonov/codex-tray/releases/latest) खोलें।
 2. `codex-tray-<version>-windows-x86_64.exe` और उसकी `.sha256` फ़ाइल डाउनलोड करें।
 3. SHA-256 checksum सत्यापित करें।
-4. executable को किसी स्थायी फ़ोल्डर में ले जाकर चलाएँ।
+4. executable को किसी स्थायी और लिखने योग्य फ़ोल्डर में ले जाकर चलाएँ।
 
 PowerShell में checksum जाँचने का उदाहरण:
 
 ```powershell
-Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 Installer की आवश्यकता नहीं है। Release एक ही portable executable है; `codex` कमांड बाहरी runtime आवश्यकता बनी रहती है।
@@ -50,7 +52,7 @@ Installer की आवश्यकता नहीं है। Release एक 
 
 ```powershell
 codex login
-.\codex-tray-0.3.0-windows-x86_64.exe
+.\codex-tray-0.4.0-windows-x86_64.exe
 ```
 
 ऐप छिपी हुई अवस्था में शुरू होता है और Windows सिस्टम ट्रे में अपना आइकन जोड़ता है।
@@ -60,6 +62,7 @@ codex login
 - कोटा पैनल दिखाने के लिए ट्रे आइकन पर पॉइंटर ले जाएँ।
 - पैनल छिपाने के लिए पॉइंटर आइकन से दूर ले जाएँ।
 - पैनल छिपाकर संदर्भ मेनू खोलने के लिए आइकन पर दायाँ क्लिक करें।
+- **भाषा** उपमेनू खोलें और **सिस्टम भाषा** या कोई विशिष्ट भाषा चुनें। बदलाव तुरंत लागू होता है।
 - मौजूदा app-server connection पर `account/read` और `account/rateLimits/read` को तुरंत दोहराने के लिए **अभी अपडेट करें** चुनें।
 - चल रहे executable वाली directory खोलने के लिए **ऐप का folder खोलें** चुनें।
 - वर्तमान executable path को उपयोगकर्ता के `Run` key में दर्ज करने या हटाने के लिए **Windows के साथ शुरू करें** को टॉगल करें।
@@ -69,7 +72,16 @@ codex login
 
 ## कॉन्फ़िगरेशन
 
-Codex Tray की कोई configuration file या environment variable नहीं है। वैकल्पिक Windows startup संदर्भ मेनू से नियंत्रित होता है और हमेशा चल रहे executable के dynamically detected path का उपयोग करता है।
+पहली बार शुरू होने पर Codex Tray executable के पास `codex-tray.json` बनाता है। इसमें चुनी हुई भाषा और Windows startup सेटिंग संग्रहीत होती हैं:
+
+```json
+{
+  "language": "system",
+  "start_with_windows": false
+}
+```
+
+`language` में `system`, `en`, `es`, `fr`, `pt`, `de`, `it`, `ru`, `zh-CN`, `hi`, `ar`, `ja` या `ko` स्वीकार किए जाते हैं। configuration file सेटिंग्स का स्रोत है। उपयोगकर्ता की Windows `Run` entry को `start_with_windows` से synchronize किया जाता है और उसमें हमेशा चल रहे executable का dynamically detected path होता है। configuration पहली बार बनाते समय मौजूदा startup entry import की जाती है।
 
 ## स्रोत से build करें
 

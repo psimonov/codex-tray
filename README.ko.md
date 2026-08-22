@@ -19,7 +19,9 @@ Codex Tray를 사용하면 Codex 앱이나 CLI를 화면 앞에 띄워 두지 �
 - Windows 밝은/어두운 테마, 강조 색상 및 투명도 지원.
 - 사용량 단계와 오류 상태를 위한 픽셀 정렬 트레이 아이콘.
 - 아이콘 위에 포인터를 올리면 패널을 표시하고 벗어나면 숨김.
+- 12개 언어 번역을 내장하며 기본값으로 시스템 언어를 선택.
 - 요청 시 새로 고침, 실행 파일 폴더 열기, Windows 시작 설정 및 명확한 종료 동작을 제공하는 컨텍스트 메뉴.
+- 실행 파일 옆에 저장되는 포터블 언어 및 자동 시작 설정.
 - 트레이 아이콘 위에 시스템 툴팁을 표시하지 않음.
 - 로딩, 재연결, 인증, 구독, CLI 없음, 사용량 소진 및 app-server 오류 상태를 구분하여 표시.
 
@@ -36,12 +38,12 @@ Codex Tray는 현재 네이티브 Windows backend만 구현합니다. Linux, mac
 1. [최신 GitHub Release](https://github.com/psimonov/codex-tray/releases/latest)를 엽니다.
 2. `codex-tray-<version>-windows-x86_64.exe`와 해당 `.sha256` 파일을 다운로드합니다.
 3. SHA-256 체크섬을 확인합니다.
-4. 실행 파일을 원하는 영구 폴더로 옮긴 뒤 실행합니다.
+4. 실행 파일을 쓰기 가능한 영구 폴더로 옮긴 뒤 실행합니다.
 
 PowerShell에서 체크섬을 확인하는 예시:
 
 ```powershell
-Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.4.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 설치 프로그램은 필요하지 않습니다. Release는 하나의 포터블 실행 파일로 제공되며 `codex` 명령은 외부 런타임 요구 사항으로 유지됩니다.
@@ -50,7 +52,7 @@ Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
 
 ```powershell
 codex login
-.\codex-tray-0.3.0-windows-x86_64.exe
+.\codex-tray-0.4.0-windows-x86_64.exe
 ```
 
 앱은 숨김 상태로 시작되고 Windows 시스템 트레이에 아이콘을 추가합니다.
@@ -60,6 +62,7 @@ codex login
 - 사용량 패널을 표시하려면 트레이 아이콘 위에 포인터를 올립니다.
 - 패널을 숨기려면 아이콘에서 포인터를 벗어납니다.
 - 마우스 오른쪽 버튼으로 클릭하면 패널을 숨기고 컨텍스트 메뉴를 엽니다.
+- **언어** 하위 메뉴를 열고 **시스템 언어** 또는 특정 언어를 선택합니다. 변경 사항은 즉시 적용됩니다.
 - **지금 새로 고침**을 선택하면 기존 app-server 연결을 통해 `account/read`와 `account/rateLimits/read`를 즉시 다시 실행합니다.
 - **애플리케이션 폴더 열기**를 선택하면 실행 중인 파일이 있는 폴더를 엽니다.
 - **Windows 시작 시 실행**을 전환하면 현재 실행 파일 경로를 사용자 `Run` 키에 등록하거나 제거합니다.
@@ -69,7 +72,16 @@ codex login
 
 ## 구성
 
-Codex Tray는 구성 파일이나 환경 변수를 사용하지 않습니다. 선택적인 Windows 자동 시작은 컨텍스트 메뉴에서 제어하며 항상 실행 중인 파일에서 동적으로 감지한 경로를 사용합니다.
+처음 실행할 때 Codex Tray는 실행 파일 옆에 `codex-tray.json`을 생성합니다. 이 파일에는 선택한 언어와 Windows 자동 시작 설정이 저장됩니다.
+
+```json
+{
+  "language": "system",
+  "start_with_windows": false
+}
+```
+
+`language`에는 `system`, `en`, `es`, `fr`, `pt`, `de`, `it`, `ru`, `zh-CN`, `hi`, `ar`, `ja`, `ko`를 사용할 수 있습니다. 구성 파일이 설정의 원본입니다. 사용자의 Windows `Run` 항목은 `start_with_windows`에서 동기화되며 항상 실행 중인 파일에서 동적으로 감지한 경로를 사용합니다. 구성을 처음 생성할 때 기존 자동 시작 항목을 가져옵니다.
 
 ## 소스에서 빌드
 

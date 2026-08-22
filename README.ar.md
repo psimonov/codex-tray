@@ -1,0 +1,112 @@
+# Codex Tray
+
+[English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [हिन्दी](README.hi.md) · العربية · [日本語](README.ja.md) · [한국어](README.ko.md)
+
+---
+
+مؤشر أصلي في علبة نظام Windows لمراقبة حصة استخدام Codex المتبقية.
+
+## نظرة عامة
+
+يتيح Codex Tray متابعة حصة Codex الحالية من دون إبقاء التطبيق أو واجهة CLI في المقدمة. يعمل كتطبيق صغير في علبة نظام Windows، ويعيد استخدام جلسة Codex CLI الموثقة للمستخدم الحالي، ويعرض لوحة مختصرة عند تمرير المؤشر فوق الأيقونة.
+
+يتواصل التطبيق حصراً مع `codex app-server` المثبت محلياً. لا يطلب مفتاح API ولا يقرأ أو ينسخ `~/.codex/auth.json` مباشرةً.
+
+## الميزات
+
+- تحديثات فورية للحصة عبر إشعارات `account/rateLimits/updated`.
+- لوحة مختصرة تراعي DPI وتستخدم صفوفاً ثابتة بالتنسيق `التسمية: القيمة`.
+- دعم السمة الفاتحة والداكنة ولون التمييز والشفافية في Windows.
+- أيقونات مضبوطة على شبكة البكسل لمستويات الحصة وحالات الخطأ.
+- إظهار اللوحة عند تمرير المؤشر وإخفاؤها عند ابتعاده.
+- قائمة سياق للتحكم في التشغيل مع Windows وإجراء واضح للإغلاق.
+- عدم عرض تلميح النظام فوق أيقونة العلبة.
+- حالات منفصلة للتحميل وإعادة الاتصال والمصادقة والاشتراك وغياب CLI ونفاد الحصة وأخطاء app-server.
+
+## المتطلبات
+
+- Windows 11 x86-64.
+- توفر [Codex CLI](https://learn.chatgpt.com/docs/codex/cli) في `PATH`.
+- جلسة Codex CLI موثقة تم إنشاؤها باستخدام `codex login`.
+
+ينفذ Codex Tray حالياً backend أصلياً لنظام Windows فقط. لا تُنشر ملفات Linux أو macOS أو Windows ARM64 إلى أن تُنفذ مكونات المنصة الخاصة بها وتُختبر.
+
+## التثبيت
+
+1. افتح [أحدث إصدار على GitHub](https://github.com/psimonov/codex-tray/releases/latest).
+2. نزّل `codex-tray-<version>-windows-x86_64.exe` وملف `.sha256` المقابل له.
+3. تحقق من قيمة SHA-256.
+4. انقل الملف التنفيذي إلى أي مجلد دائم ثم شغّله.
+
+مثال للتحقق باستخدام PowerShell:
+
+```powershell
+Get-FileHash .\codex-tray-0.2.0-windows-x86_64.exe -Algorithm SHA256
+```
+
+لا حاجة إلى برنامج تثبيت. يتكون الإصدار من ملف تنفيذي محمول واحد؛ ويظل الأمر `codex` متطلب تشغيل خارجياً.
+
+## البدء السريع
+
+```powershell
+codex login
+.\codex-tray-0.2.0-windows-x86_64.exe
+```
+
+يبدأ التطبيق مخفياً ويضيف أيقونته إلى علبة نظام Windows.
+
+## الاستخدام
+
+- مرّر المؤشر فوق الأيقونة لإظهار لوحة الحصة.
+- أبعد المؤشر عن الأيقونة لإخفاء اللوحة.
+- انقر بزر الفأرة الأيمن لإخفاء اللوحة وفتح قائمة السياق.
+- بدّل خيار **التشغيل مع Windows** لتسجيل مسار الملف التنفيذي الحالي أو إزالته من مفتاح المستخدم `Run`.
+- اختر **إغلاق** لإيقاف Codex Tray وعملية app-server التابعة له.
+
+تصل تحديثات الحصة عبر اتصال دائم واحد مع `codex app-server`. يقرأ Codex Tray الحساب والحدود مرة واحدة عند بدء الاتصال، ويدمج الإشعارات الجزئية اللاحقة، ثم يعيد الاتصال إذا توقف app-server بصورة غير متوقعة.
+
+## الإعداد
+
+لا يستخدم Codex Tray ملف إعداد أو متغيرات بيئة. يُتحكم في التشغيل الاختياري مع Windows من قائمة السياق، ويستخدم دائماً المسار المكتشف ديناميكياً للملف التنفيذي قيد التشغيل.
+
+## البناء من المصدر
+
+يثبت المستودع إصدار Rust toolchain المطلوب.
+
+```powershell
+git clone https://github.com/psimonov/codex-tray.git
+Set-Location codex-tray
+cargo build --release --locked
+```
+
+الملف التنفيذي الناتج هو `target\release\codex-tray.exe`.
+
+## الاختبارات
+
+```powershell
+cargo fmt --all -- --check
+cargo test --locked
+cargo clippy --all-targets --all-features --locked -- -D warnings
+```
+
+## الإصدارات
+
+تستخدم الوسوم التنسيق `vMAJOR.MINOR.PATCH`. يتحقق GitHub Actions من تطابق الوسم مع إصدار `Cargo.toml`، ويشغّل اختبارات المشروع، ويبني ملف Windows x86-64 التنفيذي، ثم ينشره مع قيمة SHA-256 في GitHub Release واحد.
+
+يدعم المشروع Windows فقط حالياً، لذلك لا تُنشر إلا ملفات Windows x86-64. هذا قرار صريح متعلق بالمنصة، وليس ادعاءً غير مختبر بدعم منصات متعددة.
+
+## الأمان
+
+راجع [SECURITY.md](SECURITY.md) لمعرفة الإصدارات المدعومة وطريقة الإبلاغ الخاص عن الثغرات. لا تكشف عن الثغرات في issues عامة.
+
+## المساهمة
+
+راجع [CONTRIBUTING.md](CONTRIBUTING.md) لمعرفة سير التطوير ومتطلبات commits.
+
+## الترخيص
+
+يتوفر Codex Tray بموجب [ترخيص MIT](LICENSE).
+
+## مرجع البروتوكول
+
+- [Codex App Server](https://learn.chatgpt.com/docs/app-server)

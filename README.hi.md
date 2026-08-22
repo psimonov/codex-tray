@@ -1,0 +1,112 @@
+# Codex Tray
+
+[English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · हिन्दी · [العربية](README.ar.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+
+---
+
+Codex की बची हुई उपयोग सीमा देखने के लिए एक नेटिव Windows सिस्टम-ट्रे संकेतक।
+
+## परिचय
+
+Codex Tray आपको Codex ऐप या CLI को सामने रखे बिना मौजूदा Codex कोटा देखने देता है। यह Windows सिस्टम ट्रे में एक छोटे ऐप की तरह चलता है, वर्तमान उपयोगकर्ता के प्रमाणित Codex CLI सत्र का उपयोग करता है और आइकन पर पॉइंटर ले जाने पर एक संक्षिप्त कोटा पैनल दिखाता है।
+
+ऐप केवल स्थानीय रूप से स्थापित `codex app-server` से संवाद करता है। यह API कुंजी नहीं माँगता और `~/.codex/auth.json` को सीधे पढ़ता या कॉपी नहीं करता।
+
+## विशेषताएँ
+
+- `account/rateLimits/updated` सर्वर सूचनाओं के माध्यम से कोटा का लाइव अपडेट।
+- स्थिर `लेबल: मान` पंक्तियों वाला संक्षिप्त DPI-aware पैनल।
+- Windows के लाइट/डार्क थीम, एक्सेंट रंग और पारदर्शिता का समर्थन।
+- कोटा स्तरों और त्रुटि स्थितियों के लिए पिक्सेल-अलाइन ट्रे आइकन।
+- पॉइंटर ले जाने पर पैनल दिखता है और हटाने पर छिप जाता है।
+- Windows के साथ शुरू करने के नियंत्रण और स्पष्ट बंद करने की क्रिया वाला संदर्भ मेनू।
+- ट्रे आइकन पर कोई सिस्टम टूलटिप नहीं।
+- लोडिंग, दोबारा कनेक्ट होने, प्रमाणीकरण, सदस्यता, CLI न मिलने, कोटा समाप्त होने और app-server त्रुटि के अलग-अलग संकेत।
+
+## आवश्यकताएँ
+
+- Windows 11 x86-64।
+- `PATH` में उपलब्ध [Codex CLI](https://learn.chatgpt.com/docs/codex/cli)।
+- `codex login` से बनाया गया प्रमाणित Codex CLI सत्र।
+
+Codex Tray में अभी केवल नेटिव Windows backend लागू है। Linux, macOS और Windows ARM64 के platform backend लागू और परीक्षण किए जाने तक उनके artefact प्रकाशित नहीं किए जाते।
+
+## स्थापना
+
+1. [नवीनतम GitHub Release](https://github.com/psimonov/codex-tray/releases/latest) खोलें।
+2. `codex-tray-<version>-windows-x86_64.exe` और उसकी `.sha256` फ़ाइल डाउनलोड करें।
+3. SHA-256 checksum सत्यापित करें।
+4. executable को किसी स्थायी फ़ोल्डर में ले जाकर चलाएँ।
+
+PowerShell में checksum जाँचने का उदाहरण:
+
+```powershell
+Get-FileHash .\codex-tray-0.2.0-windows-x86_64.exe -Algorithm SHA256
+```
+
+Installer की आवश्यकता नहीं है। Release एक ही portable executable है; `codex` कमांड बाहरी runtime आवश्यकता बनी रहती है।
+
+## तुरंत शुरू करें
+
+```powershell
+codex login
+.\codex-tray-0.2.0-windows-x86_64.exe
+```
+
+ऐप छिपी हुई अवस्था में शुरू होता है और Windows सिस्टम ट्रे में अपना आइकन जोड़ता है।
+
+## उपयोग
+
+- कोटा पैनल दिखाने के लिए ट्रे आइकन पर पॉइंटर ले जाएँ।
+- पैनल छिपाने के लिए पॉइंटर आइकन से दूर ले जाएँ।
+- पैनल छिपाकर संदर्भ मेनू खोलने के लिए आइकन पर दायाँ क्लिक करें।
+- वर्तमान executable path को उपयोगकर्ता के `Run` key में दर्ज करने या हटाने के लिए **Windows के साथ शुरू करें** को टॉगल करें।
+- Codex Tray और उसके app-server child process को रोकने के लिए **बंद करें** चुनें।
+
+कोटा अपडेट `codex app-server` के साथ एक स्थायी कनेक्शन से आते हैं। Codex Tray शुरुआत में account और limits को एक बार पढ़ता है, बाद की आंशिक सूचनाओं को मिलाता है और app-server के अनपेक्षित रूप से बंद होने पर फिर से जुड़ता है।
+
+## कॉन्फ़िगरेशन
+
+Codex Tray की कोई configuration file या environment variable नहीं है। वैकल्पिक Windows startup संदर्भ मेनू से नियंत्रित होता है और हमेशा चल रहे executable के dynamically detected path का उपयोग करता है।
+
+## स्रोत से build करें
+
+Repository आवश्यक Rust toolchain को pin करता है।
+
+```powershell
+git clone https://github.com/psimonov/codex-tray.git
+Set-Location codex-tray
+cargo build --release --locked
+```
+
+बना हुआ executable `target\release\codex-tray.exe` है।
+
+## परीक्षण
+
+```powershell
+cargo fmt --all -- --check
+cargo test --locked
+cargo clippy --all-targets --all-features --locked -- -D warnings
+```
+
+## रिलीज़
+
+Version tag का प्रारूप `vMAJOR.MINOR.PATCH` है। GitHub Actions tag को `Cargo.toml` के version से मिलाता है, project checks चलाता है, Windows x86-64 executable बनाता है और executable तथा उसका SHA-256 checksum एक ही GitHub Release में प्रकाशित करता है।
+
+Project अभी केवल Windows का समर्थन करता है, इसलिए सिर्फ Windows x86-64 artefact प्रकाशित होते हैं। यह एक स्पष्ट platform निर्णय है, अप्रमाणित cross-platform support का दावा नहीं।
+
+## सुरक्षा
+
+समर्थित versions और vulnerability की निजी रिपोर्टिंग के तरीके के लिए [SECURITY.md](SECURITY.md) देखें। Public issue में vulnerability प्रकट न करें।
+
+## योगदान
+
+Development workflow और commit आवश्यकताओं के लिए [CONTRIBUTING.md](CONTRIBUTING.md) देखें।
+
+## लाइसेंस
+
+Codex Tray [MIT License](LICENSE) के अंतर्गत उपलब्ध है।
+
+## Protocol reference
+
+- [Codex App Server](https://learn.chatgpt.com/docs/app-server)

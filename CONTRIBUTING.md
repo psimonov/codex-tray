@@ -32,7 +32,7 @@ Changes to tray icons must be inspected at every embedded size: 16, 20, 24, and 
 ## Pull requests
 
 - Keep each pull request focused on one logical change.
-- Update both `README.md` and `README.ru.md` when user-facing facts change.
+- Update all 12 localized README files in one commit when user-facing facts change.
 - Document platform support accurately; do not claim untested targets.
 - Preserve the channel boundary between shared Codex logic and the Windows UI backend.
 - Add or update tests for behavior that can be verified without a live account.
@@ -50,3 +50,5 @@ Use `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, o
 ## Security
 
 Do not open a public issue for a suspected vulnerability. Follow [SECURITY.md](SECURITY.md).
+
+AI-assisted changes must also follow the project-level instructions in [AGENTS.md](AGENTS.md).

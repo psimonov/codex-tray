@@ -22,10 +22,15 @@ use windows::{
                 TextOutW,
             },
         },
-        System::LibraryLoader::GetModuleHandleW,
-        System::Registry::{
-            HKEY_CURRENT_USER, REG_SZ, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegDeleteKeyValueW,
-            RegGetValueW, RegSetKeyValueW,
+        System::{
+            Com::{
+                COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE, CoInitializeEx, CoUninitialize,
+            },
+            LibraryLoader::GetModuleHandleW,
+            Registry::{
+                HKEY_CURRENT_USER, REG_SZ, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegDeleteKeyValueW,
+                RegGetValueW, RegSetKeyValueW,
+            },
         },
         UI::{
             HiDpi::{
@@ -34,7 +39,7 @@ use windows::{
             },
             Shell::{
                 NIF_ICON, NIF_MESSAGE, NIM_ADD, NIM_DELETE, NIM_MODIFY, NOTIFYICONDATAW,
-                NOTIFYICONIDENTIFIER, Shell_NotifyIconGetRect, Shell_NotifyIconW,
+                NOTIFYICONIDENTIFIER, Shell_NotifyIconGetRect, Shell_NotifyIconW, ShellExecuteW,
             },
             WindowsAndMessaging::{
                 AppendMenuW, CREATESTRUCTW, CW_USEDEFAULT, CreatePopupMenu, CreateWindowExW,
@@ -43,12 +48,12 @@ use windows::{
                 IDI_APPLICATION, IMAGE_ICON, LR_DEFAULTCOLOR, LWA_ALPHA, LoadCursorW, LoadIconW,
                 LoadImageW, MB_ICONERROR, MB_OK, MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED,
                 MSG, MessageBoxW, NONCLIENTMETRICSW, PostQuitMessage, RegisterClassExW,
-                SM_CXSMICON, SPI_GETNONCLIENTMETRICS, SW_HIDE, SWP_NOACTIVATE, SWP_SHOWWINDOW,
-                SetForegroundWindow, SetLayeredWindowAttributes, SetTimer, SetWindowLongPtrW,
-                SetWindowPos, ShowWindow, TPM_BOTTOMALIGN, TPM_LEFTALIGN, TPM_RETURNCMD,
-                TrackPopupMenu, WM_APP, WM_COMMAND, WM_CREATE, WM_DESTROY, WM_MOUSEMOVE,
-                WM_NCCREATE, WM_PAINT, WM_RBUTTONUP, WM_TIMER, WNDCLASSEXW, WS_EX_LAYERED,
-                WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+                SM_CXSMICON, SPI_GETNONCLIENTMETRICS, SW_HIDE, SW_SHOWNORMAL, SWP_NOACTIVATE,
+                SWP_SHOWWINDOW, SetForegroundWindow, SetLayeredWindowAttributes, SetTimer,
+                SetWindowLongPtrW, SetWindowPos, ShowWindow, TPM_BOTTOMALIGN, TPM_LEFTALIGN,
+                TPM_RETURNCMD, TrackPopupMenu, WM_APP, WM_COMMAND, WM_CREATE, WM_DESTROY,
+                WM_MOUSEMOVE, WM_NCCREATE, WM_PAINT, WM_RBUTTONUP, WM_TIMER, WNDCLASSEXW,
+                WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
             },
         },
     },
@@ -65,6 +70,8 @@ const TRAY_MESSAGE: u32 = WM_APP + 1;
 const TIMER_ID: usize = 1;
 const MENU_AUTOSTART: usize = 1001;
 const MENU_EXIT: usize = 1002;
+const MENU_REFRESH: usize = 1003;
+const MENU_OPEN_FOLDER: usize = 1004;
 const HOVER_HIDE_DELAY: Duration = Duration::from_millis(150);
 const AUTOSTART_KEY: PCWSTR = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
 const AUTOSTART_VALUE: PCWSTR = w!("Codex Tray");
@@ -112,7 +119,26 @@ enum UiStatus {
     Error,
 }
 
+struct ComApartment;
+
+impl ComApartment {
+    fn initialize() -> Option<Self> {
+        unsafe {
+            CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE)
+                .is_ok()
+                .then_some(Self)
+        }
+    }
+}
+
+impl Drop for ComApartment {
+    fn drop(&mut self) {
+        unsafe { CoUninitialize() };
+    }
+}
+
 pub fn run(updates: Receiver<WorkerUpdate>, commands: Sender<WorkerCommand>) -> WinResult<()> {
+    let _com = ComApartment::initialize();
     unsafe {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         let instance = GetModuleHandleW(None)?;
@@ -695,12 +721,22 @@ unsafe fn show_context_menu(hwnd: HWND) {
             Err(_) => return,
         };
         let autostart = wide("Запускать вместе с Windows");
+        let refresh = wide("Обновить сейчас");
+        let open_folder = wide("Открыть папку с программой");
         let autostart_state = if autostart_enabled() {
             MF_CHECKED
         } else {
             MF_UNCHECKED
         };
         let close = wide("Закрыть");
+        let _ = AppendMenuW(menu, MF_STRING, MENU_REFRESH, PCWSTR(refresh.as_ptr()));
+        let _ = AppendMenuW(
+            menu,
+            MF_STRING,
+            MENU_OPEN_FOLDER,
+            PCWSTR(open_folder.as_ptr()),
+        );
+        let _ = AppendMenuW(menu, MF_SEPARATOR, 0, None);
         let _ = AppendMenuW(
             menu,
             MF_STRING | autostart_state,
@@ -732,6 +768,12 @@ unsafe fn show_context_menu(hwnd: HWND) {
 unsafe fn handle_menu_command(hwnd: HWND, command: usize) {
     unsafe {
         match command {
+            MENU_REFRESH => request_refresh(hwnd),
+            MENU_OPEN_FOLDER => {
+                if let Err(error) = open_program_folder(hwnd) {
+                    show_ui_error(hwnd, &error);
+                }
+            }
             MENU_AUTOSTART => {
                 if let Err(error) = set_autostart(!autostart_enabled()) {
                     show_ui_error(hwnd, &error);
@@ -742,6 +784,63 @@ unsafe fn handle_menu_command(hwnd: HWND, command: usize) {
             }
             _ => {}
         }
+    }
+}
+
+unsafe fn request_refresh(hwnd: HWND) {
+    unsafe {
+        let sent = APP.with(|app| {
+            let mut app = app.borrow_mut();
+            let Some(state) = app.as_mut() else {
+                return false;
+            };
+            if state.commands.send(WorkerCommand::Refresh).is_err() {
+                return false;
+            }
+            state.querying = true;
+            state.last_error = None;
+            true
+        });
+
+        if sent {
+            update_tray_visual(hwnd);
+            let _ = InvalidateRect(Some(hwnd), None, false);
+        } else {
+            show_ui_error(hwnd, "Не удалось запросить обновление данных.");
+        }
+    }
+}
+
+fn executable_directory(executable: &Path) -> Result<&Path, String> {
+    executable
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .ok_or_else(|| "Не удалось определить папку приложения.".into())
+}
+
+unsafe fn open_program_folder(hwnd: HWND) -> Result<(), String> {
+    let executable = std::env::current_exe()
+        .map_err(|error| format!("Не удалось определить путь приложения: {error}"))?;
+    let directory = executable_directory(&executable)?;
+    let directory = wide(&directory.to_string_lossy());
+    let result = unsafe {
+        ShellExecuteW(
+            Some(hwnd),
+            w!("open"),
+            PCWSTR(directory.as_ptr()),
+            PCWSTR::null(),
+            PCWSTR::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+
+    if result.0 as isize > 32 {
+        Ok(())
+    } else {
+        Err(format!(
+            "Не удалось открыть папку приложения (код {}).",
+            result.0 as isize
+        ))
     }
 }
 
@@ -1295,5 +1394,15 @@ mod tests {
             quote_executable(Path::new(r"C:\Portable Apps\Codex Tray\codex-tray.exe")),
             r#""C:\Portable Apps\Codex Tray\codex-tray.exe""#
         );
+    }
+
+    #[test]
+    fn finds_executable_directory() {
+        assert_eq!(
+            executable_directory(Path::new(r"C:\Portable Apps\Codex Tray\codex-tray.exe"))
+                .expect("directory"),
+            Path::new(r"C:\Portable Apps\Codex Tray")
+        );
+        assert!(executable_directory(Path::new("codex-tray.exe")).is_err());
     }
 }

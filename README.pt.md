@@ -19,7 +19,7 @@ O aplicativo se comunica apenas com o `codex app-server` instalado localmente. E
 - Suporte aos temas claro e escuro, à cor de destaque e à transparência do Windows.
 - Ícones alinhados aos pixels para níveis de cota e estados de erro.
 - Exibição do painel ao passar o cursor e ocultação ao afastá-lo.
-- Menu de contexto com controle de inicialização com o Windows e uma ação explícita para fechar.
+- Menu de contexto com atualização sob demanda, acesso à pasta do executável, controle de inicialização com o Windows e uma ação explícita para fechar.
 - Nenhuma dica de ferramenta do sistema sobre o ícone.
 - Estados distintos para carregamento, reconexão, autenticação, assinatura, CLI ausente, cota esgotada e erro do app-server.
 
@@ -41,7 +41,7 @@ Atualmente, o Codex Tray implementa apenas um backend nativo do Windows. Artefat
 Exemplo de verificação no PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.2.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 Não é necessário um instalador. A versão é um único executável portátil; o comando `codex` continua sendo um requisito externo de execução.
@@ -50,7 +50,7 @@ Não é necessário um instalador. A versão é um único executável portátil;
 
 ```powershell
 codex login
-.\codex-tray-0.2.0-windows-x86_64.exe
+.\codex-tray-0.3.0-windows-x86_64.exe
 ```
 
 O aplicativo inicia oculto e adiciona seu ícone à bandeja do sistema do Windows.
@@ -60,10 +60,12 @@ O aplicativo inicia oculto e adiciona seu ícone à bandeja do sistema do Window
 - Passe o cursor sobre o ícone para exibir o painel da cota.
 - Afaste o cursor do ícone para ocultar o painel.
 - Clique com o botão direito para ocultar o painel e abrir o menu de contexto.
+- Selecione **Atualizar agora** para repetir imediatamente `account/read` e `account/rateLimits/read` pela conexão existente com o app-server.
+- Selecione **Abrir pasta do aplicativo** para abrir o diretório que contém o executável em uso.
 - Alterne **Iniciar com o Windows** para registrar ou remover o caminho do executável atual na chave `Run` do usuário.
 - Selecione **Fechar** para encerrar o Codex Tray e seu processo filho app-server.
 
-As atualizações chegam por uma conexão persistente com `codex app-server`. O Codex Tray realiza uma leitura inicial da conta e dos limites, combina as notificações parciais posteriores e se reconecta após uma interrupção inesperada do app-server.
+As atualizações chegam por uma conexão persistente com `codex app-server`. O Codex Tray lê inicialmente a conta e os limites, repete ambas as leituras somente após uma atualização explícita, combina as notificações parciais posteriores e se reconecta após uma interrupção inesperada do app-server.
 
 ## Configuração
 

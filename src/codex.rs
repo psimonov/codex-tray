@@ -40,6 +40,7 @@ pub enum WorkerUpdate {
 
 #[derive(Debug, Clone, Copy)]
 pub enum WorkerCommand {
+    Refresh,
     Stop,
 }
 
@@ -78,6 +79,7 @@ pub fn run_worker(update_tx: Sender<WorkerUpdate>, command_rx: Receiver<WorkerCo
 
         match command_rx.recv_timeout(RECONNECT_DELAY) {
             Ok(WorkerCommand::Stop) | Err(RecvTimeoutError::Disconnected) => return,
+            Ok(WorkerCommand::Refresh) => {}
             Err(RecvTimeoutError::Timeout) => {}
         }
     }
@@ -89,34 +91,31 @@ fn subscribe_to_usage(
 ) -> Result<(), CodexError> {
     let mut client = AppServerClient::start()?;
 
-    client.send(&json!({
-        "id": 1,
-        "method": "initialize",
-        "params": {
+    client.request(
+        "initialize",
+        Some(json!({
             "clientInfo": { "name": "codex-tray", "version": env!("CARGO_PKG_VERSION") },
             "capabilities": {}
-        }
-    }))?;
-    client.read_response(1)?;
+        })),
+    )?;
     client.send(&json!({ "method": "initialized" }))?;
 
-    client.send(&json!({
-        "id": 2,
-        "method": "account/read",
-        "params": { "refreshToken": false }
-    }))?;
-    let account = client.read_response(2)?;
-
-    client.send(&json!({
-        "id": 3,
-        "method": "account/rateLimits/read"
-    }))?;
-    let mut limits = client.read_response(3)?;
+    let mut account = read_account(&mut client)?;
+    let mut limits = read_rate_limits(&mut client)?;
     send_snapshot(update_tx, &account, &limits)?;
 
     loop {
         match command_rx.try_recv() {
             Ok(WorkerCommand::Stop) | Err(TryRecvError::Disconnected) => return Ok(()),
+            Ok(WorkerCommand::Refresh) => {
+                update_tx
+                    .send(WorkerUpdate::Querying)
+                    .map_err(|_| CodexError::Protocol("канал интерфейса закрыт".into()))?;
+                account = read_account(&mut client)?;
+                limits = read_rate_limits(&mut client)?;
+                send_snapshot(update_tx, &account, &limits)?;
+                continue;
+            }
             Err(TryRecvError::Empty) => {}
         }
 
@@ -143,6 +142,14 @@ fn subscribe_to_usage(
     }
 }
 
+fn read_account(client: &mut AppServerClient) -> Result<Value, CodexError> {
+    client.request("account/read", Some(json!({ "refreshToken": false })))
+}
+
+fn read_rate_limits(client: &mut AppServerClient) -> Result<Value, CodexError> {
+    client.request("account/rateLimits/read", None)
+}
+
 fn send_snapshot(
     update_tx: &Sender<WorkerUpdate>,
     account: &Value,
@@ -158,6 +165,7 @@ struct AppServerClient {
     child: Child,
     stdin: ChildStdin,
     messages: Receiver<Result<Value, CodexError>>,
+    next_request_id: i64,
 }
 
 impl AppServerClient {
@@ -216,7 +224,22 @@ impl AppServerClient {
             child,
             stdin,
             messages,
+            next_request_id: 1,
         })
+    }
+
+    fn request(&mut self, method: &str, params: Option<Value>) -> Result<Value, CodexError> {
+        let id = self.next_request_id;
+        self.next_request_id = self
+            .next_request_id
+            .checked_add(1)
+            .ok_or_else(|| CodexError::Protocol("исчерпаны идентификаторы запросов".into()))?;
+        let mut request = json!({ "id": id, "method": method });
+        if let Some(params) = params {
+            request["params"] = params;
+        }
+        self.send(&request)?;
+        self.read_response(id)
     }
 
     fn send(&mut self, value: &Value) -> Result<(), CodexError> {

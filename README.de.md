@@ -19,7 +19,7 @@ Die Anwendung kommuniziert ausschließlich mit dem lokal installierten `codex ap
 - Unterstützung für helles und dunkles Windows-Design, Akzentfarbe und Transparenz.
 - Pixelgenau ausgerichtete Symbole für Kontingentstufen und Fehlerzustände.
 - Einblenden beim Überfahren des Symbols und Ausblenden, sobald der Zeiger es verlässt.
-- Kontextmenü mit Steuerung des Windows-Autostarts und einem eindeutigen Befehl zum Beenden.
+- Kontextmenü mit Aktualisierung auf Anforderung, Zugriff auf den Ordner der ausführbaren Datei, Steuerung des Windows-Autostarts und einem eindeutigen Befehl zum Beenden.
 - Kein System-Tooltip über dem Symbol.
 - Separate Zustände für Laden, erneute Verbindung, Authentifizierung, Abonnement, fehlende CLI, ausgeschöpftes Kontingent und app-server-Fehler.
 
@@ -41,7 +41,7 @@ Codex Tray besitzt derzeit ausschließlich ein natives Windows-Backend. Artefakt
 Beispiel für die Prüfung in PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.2.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 Ein Installationsprogramm ist nicht erforderlich. Das Release besteht aus einer einzelnen portablen ausführbaren Datei; der Befehl `codex` bleibt eine externe Laufzeitvoraussetzung.
@@ -50,7 +50,7 @@ Ein Installationsprogramm ist nicht erforderlich. Das Release besteht aus einer 
 
 ```powershell
 codex login
-.\codex-tray-0.2.0-windows-x86_64.exe
+.\codex-tray-0.3.0-windows-x86_64.exe
 ```
 
 Die Anwendung startet ausgeblendet und fügt ihr Symbol dem Windows-Infobereich hinzu.
@@ -60,10 +60,12 @@ Die Anwendung startet ausgeblendet und fügt ihr Symbol dem Windows-Infobereich 
 - Fahren Sie mit dem Zeiger über das Symbol, um das Kontingentfenster anzuzeigen.
 - Bewegen Sie den Zeiger vom Symbol weg, um das Fenster auszublenden.
 - Klicken Sie mit der rechten Maustaste, um das Fenster auszublenden und das Kontextmenü zu öffnen.
+- Wählen Sie **Jetzt aktualisieren**, um `account/read` und `account/rateLimits/read` sofort über die bestehende app-server-Verbindung zu wiederholen.
+- Wählen Sie **Anwendungsordner öffnen**, um den Ordner der laufenden ausführbaren Datei zu öffnen.
 - Schalten Sie **Mit Windows starten** um, um den aktuellen Pfad der ausführbaren Datei im benutzerspezifischen `Run`-Schlüssel einzutragen oder zu entfernen.
 - Wählen Sie **Beenden**, um Codex Tray und seinen app-server-Kindprozess zu stoppen.
 
-Aktualisierungen treffen über eine dauerhafte Verbindung zu `codex app-server` ein. Codex Tray liest Konto und Limits anfangs einmalig, führt spätere unvollständige Benachrichtigungen zusammen und verbindet sich nach einem unerwarteten Ende von app-server erneut.
+Aktualisierungen treffen über eine dauerhafte Verbindung zu `codex app-server` ein. Codex Tray liest Konto und Limits anfangs einmalig, wiederholt beide Abfragen nur nach einer ausdrücklichen Aktualisierung, führt spätere unvollständige Benachrichtigungen zusammen und verbindet sich nach einem unerwarteten Ende von app-server erneut.
 
 ## Konfiguration
 

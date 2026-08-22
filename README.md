@@ -19,7 +19,7 @@ The application communicates only with the locally installed `codex app-server`.
 - Windows light/dark theme, accent color, and transparency support.
 - Pixel-aligned tray icons for quota levels and error states.
 - Hover to show the panel; move away to hide it.
-- Context menu with Windows startup control and an explicit close action.
+- Context menu with on-demand refresh, executable-folder access, Windows startup control, and an explicit close action.
 - No system tooltip over the tray icon.
 - Distinct loading, reconnecting, authentication, subscription, missing CLI, exhausted quota, and app-server error states.
 
@@ -41,7 +41,7 @@ Codex Tray currently implements only a native Windows backend. Linux, macOS, and
 Example checksum verification in PowerShell:
 
 ```powershell
-Get-FileHash .\codex-tray-0.2.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 No installer is required. The release is a single portable executable; the `codex` command remains an external runtime requirement.
@@ -50,7 +50,7 @@ No installer is required. The release is a single portable executable; the `code
 
 ```powershell
 codex login
-.\codex-tray-0.2.0-windows-x86_64.exe
+.\codex-tray-0.3.0-windows-x86_64.exe
 ```
 
 The application starts hidden and adds its icon to the Windows system tray.
@@ -60,10 +60,12 @@ The application starts hidden and adds its icon to the Windows system tray.
 - Hover over the tray icon to show the quota panel.
 - Move the pointer away from the icon to hide the panel.
 - Right-click the icon to hide the panel and open the context menu.
+- Select **Refresh now** to immediately repeat `account/read` and `account/rateLimits/read` over the existing app-server connection.
+- Select **Open application folder** to open the directory containing the running executable.
 - Toggle **Start with Windows** to register or remove the current executable path under the current user's Windows `Run` key.
 - Select **Close** to stop Codex Tray and its app-server child process.
 
-Quota updates arrive over one persistent `codex app-server` connection. Codex Tray performs an initial account and rate-limit read, merges subsequent sparse update notifications, and reconnects after an unexpected app-server exit.
+Quota updates arrive over one persistent `codex app-server` connection. Codex Tray performs an initial account and rate-limit read, repeats both reads only after an explicit refresh, merges subsequent sparse update notifications, and reconnects after an unexpected app-server exit.
 
 ## Configuration
 

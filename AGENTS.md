@@ -6,7 +6,7 @@ This file is the project-level source of truth for AI-assisted development in Co
 
 - Codex Tray is a native Windows 11 system-tray application written in Rust.
 - The application starts without showing a normal window. Hovering over the tray icon shows the quota panel; moving the pointer away hides it.
-- Right-clicking the tray icon hides the panel and opens a context menu containing only the Windows startup toggle and **Close**.
+- Right-clicking the tray icon hides the panel and opens a context menu with on-demand refresh, the executable folder, the Windows startup toggle, and **Close**.
 - The tray icon has no system tooltip.
 - The Windows startup entry is stored under the current user's `Run` key. Always derive its command from the running executable; never hardcode an installation path.
 - The displayed percentage is the remaining Codex quota. The bar and tray glyph drain from top to bottom as the quota decreases.
@@ -16,7 +16,7 @@ This file is the project-level source of truth for AI-assisted development in Co
 ## Codex integration
 
 - Keep one persistent `codex app-server --stdio` child process.
-- Perform the initial `account/read` and `account/rateLimits/read` requests once per connection.
+- Perform the initial `account/read` and `account/rateLimits/read` requests once per connection, and repeat them only after an explicit user refresh.
 - Receive subsequent quota changes from `account/rateLimits/updated`; do not reintroduce periodic polling.
 - Merge sparse update notifications without discarding account metadata or unchanged rate-limit fields.
 - Reconnect after an unexpected app-server exit and terminate the child process when Codex Tray closes.

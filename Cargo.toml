@@ -1,6 +1,6 @@
 [package]
 name = "codex-tray"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.98"
 description = "Native Windows 11 tray monitor for Codex usage limits"
@@ -16,6 +16,7 @@ windows = { version = "=0.62.2", features = [
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",
     "Win32_System_LibraryLoader",
+    "Win32_System_Com",
     "Win32_System_Registry",
     "Win32_UI_HiDpi",
     "Win32_UI_Shell",

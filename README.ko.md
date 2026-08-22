@@ -19,7 +19,7 @@ Codex Tray를 사용하면 Codex 앱이나 CLI를 화면 앞에 띄워 두지 �
 - Windows 밝은/어두운 테마, 강조 색상 및 투명도 지원.
 - 사용량 단계와 오류 상태를 위한 픽셀 정렬 트레이 아이콘.
 - 아이콘 위에 포인터를 올리면 패널을 표시하고 벗어나면 숨김.
-- Windows 시작 설정과 명확한 종료 동작을 제공하는 컨텍스트 메뉴.
+- 요청 시 새로 고침, 실행 파일 폴더 열기, Windows 시작 설정 및 명확한 종료 동작을 제공하는 컨텍스트 메뉴.
 - 트레이 아이콘 위에 시스템 툴팁을 표시하지 않음.
 - 로딩, 재연결, 인증, 구독, CLI 없음, 사용량 소진 및 app-server 오류 상태를 구분하여 표시.
 
@@ -41,7 +41,7 @@ Codex Tray는 현재 네이티브 Windows backend만 구현합니다. Linux, mac
 PowerShell에서 체크섬을 확인하는 예시:
 
 ```powershell
-Get-FileHash .\codex-tray-0.2.0-windows-x86_64.exe -Algorithm SHA256
+Get-FileHash .\codex-tray-0.3.0-windows-x86_64.exe -Algorithm SHA256
 ```
 
 설치 프로그램은 필요하지 않습니다. Release는 하나의 포터블 실행 파일로 제공되며 `codex` 명령은 외부 런타임 요구 사항으로 유지됩니다.
@@ -50,7 +50,7 @@ Get-FileHash .\codex-tray-0.2.0-windows-x86_64.exe -Algorithm SHA256
 
 ```powershell
 codex login
-.\codex-tray-0.2.0-windows-x86_64.exe
+.\codex-tray-0.3.0-windows-x86_64.exe
 ```
 
 앱은 숨김 상태로 시작되고 Windows 시스템 트레이에 아이콘을 추가합니다.
@@ -60,10 +60,12 @@ codex login
 - 사용량 패널을 표시하려면 트레이 아이콘 위에 포인터를 올립니다.
 - 패널을 숨기려면 아이콘에서 포인터를 벗어납니다.
 - 마우스 오른쪽 버튼으로 클릭하면 패널을 숨기고 컨텍스트 메뉴를 엽니다.
+- **지금 새로 고침**을 선택하면 기존 app-server 연결을 통해 `account/read`와 `account/rateLimits/read`를 즉시 다시 실행합니다.
+- **애플리케이션 폴더 열기**를 선택하면 실행 중인 파일이 있는 폴더를 엽니다.
 - **Windows 시작 시 실행**을 전환하면 현재 실행 파일 경로를 사용자 `Run` 키에 등록하거나 제거합니다.
 - **닫기**를 선택하면 Codex Tray와 app-server 자식 프로세스를 종료합니다.
 
-사용량 업데이트는 `codex app-server`와의 단일 지속 연결을 통해 수신됩니다. Codex Tray는 연결할 때 계정과 제한을 한 번 읽고, 이후의 부분 업데이트 알림을 병합하며 app-server가 예기치 않게 종료되면 다시 연결합니다.
+사용량 업데이트는 `codex app-server`와의 단일 지속 연결을 통해 수신됩니다. Codex Tray는 연결할 때 계정과 제한을 한 번 읽고 명시적으로 새로 고칠 때만 두 요청을 반복하며, 이후의 부분 업데이트 알림을 병합하고 app-server가 예기치 않게 종료되면 다시 연결합니다.
 
 ## 구성
 
